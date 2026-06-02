@@ -1,18 +1,33 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Card, RANK_LABELS, SUIT_SYMBOLS, SUIT_COLORS } from '../logic/deck';
 
 interface Props {
   card: Card | null;
   onPress: () => void;
+  onRemove?: () => void;
   disabled?: boolean;
 }
 
-export default function CardSlot({ card, onPress, disabled }: Props) {
+export default function CardSlot({ card, onPress, onRemove, disabled }: Props) {
+  function handlePress() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  }
+
+  function handleLongPress() {
+    if (card && onRemove) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onRemove();
+    }
+  }
+
   return (
     <TouchableOpacity
       style={[styles.card, card && styles.filled, disabled && styles.disabled]}
-      onPress={onPress}
+      onPress={handlePress}
+      onLongPress={handleLongPress}
       disabled={disabled}
       activeOpacity={0.7}
     >

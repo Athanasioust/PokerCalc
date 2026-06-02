@@ -2,13 +2,18 @@ import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import CardSlot from '../components/CardSlot';
 import CardPicker from '../components/CardPicker';
 import DrawSelector from '../components/DrawSelector';
 import ResultsPanel from '../components/ResultsPanel';
+import HandDisplay from '../components/HandDisplay';
+import PotOdds from '../components/PotOdds';
+import EquityCalculator from '../components/EquityCalculator';
 import { Card } from '../logic/deck';
-import { DrawType, availableDraws } from '../logic/outsCalculator';
+import { DrawType, availableDraws, detectComboDraws } from '../logic/outsCalculator';
 import { calculatePercentages, PercentageResult } from '../logic/percentages';
+import { evaluateBestHand } from '../logic/handEvaluator';
 
 type Variant = 'holdem' | 'omaha';
 
@@ -29,30 +34,40 @@ export default function MainScreen() {
 
   const holeCount = variant === 'holdem' ? 2 : 4;
 
-  // Keep hole cards array in sync when variant changes
   function switchVariant(v: Variant) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setVariant(v);
     setHoleCards(Array(v === 'holdem' ? 2 : 4).fill(null));
     setSelectedDraw(null);
   }
 
   const allKnownCards: Card[] = [
-    ...holeCards.filter(Boolean) as Card[],
-    ...flop.filter(Boolean) as Card[],
+    ...(holeCards.filter(Boolean) as Card[]),
+    ...(flop.filter(Boolean) as Card[]),
     ...(turn ? [turn] : []),
     ...(river ? [river] : []),
   ];
 
   const knownHoleCards = holeCards.filter(Boolean) as Card[];
   const knownBoard = [
-    ...flop.filter(Boolean) as Card[],
+    ...(flop.filter(Boolean) as Card[]),
     ...(turn ? [turn] : []),
   ];
 
   const hasMinCards = knownHoleCards.length >= 2 && knownBoard.length >= 3;
 
+  const currentHand = useMemo(
+    () => evaluateBestHand(knownHoleCards, [...knownBoard, ...(river ? [river] : [])]),
+    [JSON.stringify(knownHoleCards), JSON.stringify(knownBoard), river]
+  );
+
   const draws = useMemo(
     () => hasMinCards ? availableDraws(knownHoleCards, knownBoard) : [],
+    [JSON.stringify(knownHoleCards), JSON.stringify(knownBoard), hasMinCards]
+  );
+
+  const combos = useMemo(
+    () => hasMinCards ? detectComboDraws(knownHoleCards, knownBoard) : [],
     [JSON.stringify(knownHoleCards), JSON.stringify(knownBoard), hasMinCards]
   );
 
@@ -62,8 +77,27 @@ export default function MainScreen() {
     return calculatePercentages(selectedDraw, knownHoleCards, knownBoard);
   }, [selectedDraw, JSON.stringify(knownHoleCards), JSON.stringify(knownBoard)]);
 
+  const equityForPotOdds = result?.exact ?? null;
+
   function openPicker(target: SlotTarget) {
     setPickerTarget(target);
+  }
+
+  function removeCard(target: SlotTarget) {
+    if (target.section === 'hole') {
+      const updated = [...holeCards];
+      updated[(target as any).index] = null;
+      setHoleCards(updated);
+    } else if (target.section === 'flop') {
+      const updated = [...flop];
+      updated[(target as any).index] = null;
+      setFlop(updated);
+    } else if (target.section === 'turn') {
+      setTurn(null);
+    } else if (target.section === 'river') {
+      setRiver(null);
+    }
+    setSelectedDraw(null);
   }
 
   function handleCardSelect(card: Card) {
@@ -88,14 +122,8 @@ export default function MainScreen() {
     setSelectedDraw(null);
   }
 
-  function getSlotCard(target: SlotTarget): Card | null {
-    if (target.section === 'hole') return holeCards[(target as any).index];
-    if (target.section === 'flop') return flop[(target as any).index];
-    if (target.section === 'turn') return turn;
-    return river;
-  }
-
   function clearAll() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setHoleCards(Array(holeCount).fill(null));
     setFlop([null, null, null]);
     setTurn(null);
@@ -130,6 +158,13 @@ export default function MainScreen() {
           ))}
         </View>
 
+        {/* Current hand display */}
+        {currentHand && (
+          <View style={styles.sectionWrap}>
+            <HandDisplay handRank={currentHand} />
+          </View>
+        )}
+
         {/* Hole cards */}
         <Section label="Your Hand">
           <View style={styles.cardRow}>
@@ -138,6 +173,7 @@ export default function MainScreen() {
                 key={i}
                 card={holeCards[i] ?? null}
                 onPress={() => openPicker({ section: 'hole', index: i })}
+                onRemove={() => removeCard({ section: 'hole', index: i })}
               />
             ))}
           </View>
@@ -151,6 +187,7 @@ export default function MainScreen() {
                 key={i}
                 card={flop[i]}
                 onPress={() => openPicker({ section: 'flop', index: i })}
+                onRemove={() => removeCard({ section: 'flop', index: i })}
               />
             ))}
           </View>
@@ -159,29 +196,62 @@ export default function MainScreen() {
         {/* Turn */}
         <Section label="Turn">
           <View style={styles.cardRow}>
-            <CardSlot card={turn} onPress={() => openPicker({ section: 'turn' })} />
+            <CardSlot
+              card={turn}
+              onPress={() => openPicker({ section: 'turn' })}
+              onRemove={() => removeCard({ section: 'turn' })}
+            />
           </View>
         </Section>
 
         {/* River */}
         <Section label="River">
           <View style={styles.cardRow}>
-            <CardSlot card={river} onPress={() => openPicker({ section: 'river' })} />
+            <CardSlot
+              card={river}
+              onPress={() => openPicker({ section: 'river' })}
+              onRemove={() => removeCard({ section: 'river' })}
+            />
           </View>
         </Section>
+
+        {/* Combo draws banner */}
+        {combos.map((combo, i) => (
+          <View key={i} style={styles.comboBanner}>
+            <Text style={styles.comboLabel}>Combo Draw: {combo.label}</Text>
+            <Text style={styles.comboOuts}>{combo.outs} outs</Text>
+          </View>
+        ))}
 
         {/* Draw selector */}
         <View style={styles.sectionWrap}>
           <DrawSelector
             available={draws}
             selected={selectedDraw}
-            onSelect={setSelectedDraw}
+            onSelect={(d) => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSelectedDraw(d);
+            }}
           />
         </View>
 
         {/* Results */}
         <View style={styles.sectionWrap}>
           <ResultsPanel result={result} />
+        </View>
+
+        {/* Pot odds */}
+        <View style={styles.sectionWrap}>
+          <PotOdds equity={equityForPotOdds} />
+        </View>
+
+        {/* Equity vs villain */}
+        <View style={styles.sectionWrap}>
+          <EquityCalculator
+            heroHole={knownHoleCards}
+            board={[...knownBoard, ...(river ? [river] : [])]}
+            allKnownCards={allKnownCards}
+          />
         </View>
 
       </ScrollView>
@@ -243,7 +313,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e8e8e8',
     borderRadius: 10,
     padding: 3,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   toggleBtn: {
     flex: 1,
@@ -281,5 +351,27 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  comboBanner: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  comboLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400e',
+  },
+  comboOuts: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#92400e',
   },
 });

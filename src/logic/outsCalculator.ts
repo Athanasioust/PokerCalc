@@ -189,3 +189,42 @@ export function availableDraws(holeCards: Card[], board: Card[]): DrawType[] {
   ];
   return draws.filter(d => calculateOuts(d, holeCards, board).available);
 }
+
+export interface ComboDrawResult {
+  draws: DrawType[];
+  label: string;
+  outs: number;
+  outCards: Card[];
+}
+
+export function detectComboDraws(holeCards: Card[], board: Card[]): ComboDrawResult[] {
+  const available = availableDraws(holeCards, board);
+  const results: ComboDrawResult[] = [];
+
+  // Check all pairs of draws for combos
+  const comboPairs: [DrawType, DrawType][] = [
+    ['flush_draw', 'oesd'],
+    ['flush_draw', 'gutshot'],
+  ];
+
+  for (const [a, b] of comboPairs) {
+    if (available.includes(a) && available.includes(b)) {
+      const outA = calculateOuts(a, holeCards, board);
+      const outB = calculateOuts(b, holeCards, board);
+      // Union of out cards (deduplicated)
+      const keySet = new Set(outA.outCards.map(c => `${c.rank}${c.suit}`));
+      const combined = [...outA.outCards];
+      for (const c of outB.outCards) {
+        if (!keySet.has(`${c.rank}${c.suit}`)) combined.push(c);
+      }
+      results.push({
+        draws: [a, b],
+        label: `${DRAW_LABELS[a]} + ${DRAW_LABELS[b]}`,
+        outs: combined.length,
+        outCards: combined,
+      });
+    }
+  }
+
+  return results;
+}
