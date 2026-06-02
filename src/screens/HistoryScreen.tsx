@@ -4,7 +4,7 @@ import {
   TouchableOpacity, Alert,
 } from 'react-native';
 import { HandRecord, loadHistory, clearHistory } from '../logic/history';
-import { RANK_LABELS, SUIT_SYMBOLS, SUIT_COLORS } from '../logic/deck';
+import { RANK_LABELS, SUIT_SYMBOLS, Suit } from '../logic/deck';
 import { HAND_LABELS } from '../logic/handEvaluator';
 import { DRAW_LABELS } from '../logic/outsCalculator';
 import { useTheme } from '../ThemeContext';
@@ -12,6 +12,10 @@ import { useTheme } from '../ThemeContext';
 export default function HistoryScreen() {
   const theme = useTheme();
   const [history, setHistory] = useState<HandRecord[]>([]);
+
+  function suitColor(suit: Suit): string {
+    return suit === 'h' || suit === 'd' ? theme.suitRed : theme.suitBlack;
+  }
 
   useEffect(() => {
     loadHistory().then(setHistory);
@@ -72,15 +76,15 @@ export default function HistoryScreen() {
               <View style={styles.cardRow}>
                 {hand.holeCards.map((c, i) => (
                   <View key={i} style={[styles.miniCard, { borderColor: theme.borderStrong }]}>
-                    <Text style={[styles.miniRank, { color: SUIT_COLORS[c.suit] }]}>{RANK_LABELS[c.rank]}</Text>
-                    <Text style={[styles.miniSuit, { color: SUIT_COLORS[c.suit] }]}>{SUIT_SYMBOLS[c.suit]}</Text>
+                    <Text style={[styles.miniRank, { color: suitColor(c.suit) }]}>{RANK_LABELS[c.rank]}</Text>
+                    <Text style={[styles.miniSuit, { color: suitColor(c.suit) }]}>{SUIT_SYMBOLS[c.suit]}</Text>
                   </View>
                 ))}
                 <Text style={[styles.vs, { color: theme.textMuted }]}>│</Text>
                 {hand.board.map((c, i) => (
                   <View key={i} style={[styles.miniCard, styles.boardCard, { borderColor: theme.border }]}>
-                    <Text style={[styles.miniRank, { color: SUIT_COLORS[c.suit] }]}>{RANK_LABELS[c.rank]}</Text>
-                    <Text style={[styles.miniSuit, { color: SUIT_COLORS[c.suit] }]}>{SUIT_SYMBOLS[c.suit]}</Text>
+                    <Text style={[styles.miniRank, { color: suitColor(c.suit) }]}>{RANK_LABELS[c.rank]}</Text>
+                    <Text style={[styles.miniSuit, { color: suitColor(c.suit) }]}>{SUIT_SYMBOLS[c.suit]}</Text>
                   </View>
                 ))}
               </View>

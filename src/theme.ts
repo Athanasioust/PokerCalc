@@ -1,3 +1,5 @@
+export type ThemeMode = 'system' | 'light' | 'dark';
+
 export interface Theme {
   bg: string;
   bgCard: string;
@@ -13,6 +15,10 @@ export interface Theme {
   toggleActive: string;
   resultsBg: string;
   primary: string;
+  suitBlack: string;       // ♠♣ color — dark on light, light on dark
+  suitRed: string;         // ♥♦ color
+  sheetBg: string;         // CardPicker bottom sheet background
+  isDark: boolean;
 }
 
 export const lightTheme: Theme = {
@@ -30,6 +36,10 @@ export const lightTheme: Theme = {
   toggleActive: '#ffffff',
   resultsBg: '#1a1a2e',
   primary: '#1a1a2e',
+  suitBlack: '#1a1a1a',
+  suitRed: '#cc0000',
+  sheetBg: '#ffffff',
+  isDark: false,
 };
 
 export const darkTheme: Theme = {
@@ -38,7 +48,7 @@ export const darkTheme: Theme = {
   bgInput: '#252535',
   bgMuted: '#2a2a3e',
   border: '#333355',
-  borderStrong: '#444466',
+  borderStrong: '#555577',
   text: '#f0f0ff',
   textSecondary: '#ccccdd',
   textMuted: '#7777aa',
@@ -47,4 +57,8 @@ export const darkTheme: Theme = {
   toggleActive: '#3a3a5e',
   resultsBg: '#0a0a18',
   primary: '#7b8cde',
+  suitBlack: '#e0e0ff',
+  suitRed: '#ff6b6b',
+  sheetBg: '#1e1e2e',
+  isDark: true,
 };

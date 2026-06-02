@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Card, RANK_LABELS, SUIT_SYMBOLS, SUIT_COLORS } from '../logic/deck';
+import { Card, RANK_LABELS, SUIT_SYMBOLS, Suit } from '../logic/deck';
 import { useTheme } from '../ThemeContext';
 
 interface Props {
@@ -13,6 +13,10 @@ interface Props {
 
 export default function CardSlot({ card, onPress, onRemove, disabled }: Props) {
   const theme = useTheme();
+
+  function suitColor(suit: Suit): string {
+    return suit === 'h' || suit === 'd' ? theme.suitRed : theme.suitBlack;
+  }
 
   function handlePress() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -31,7 +35,6 @@ export default function CardSlot({ card, onPress, onRemove, disabled }: Props) {
       style={[
         styles.card,
         { backgroundColor: theme.bgCard, borderColor: theme.borderStrong },
-        card && { borderColor: theme.borderStrong },
         disabled && styles.disabled,
       ]}
       onPress={handlePress}
@@ -41,10 +44,10 @@ export default function CardSlot({ card, onPress, onRemove, disabled }: Props) {
     >
       {card ? (
         <View style={styles.cardContent}>
-          <Text style={[styles.rank, { color: SUIT_COLORS[card.suit] }]}>
+          <Text style={[styles.rank, { color: suitColor(card.suit) }]}>
             {RANK_LABELS[card.rank]}
           </Text>
-          <Text style={[styles.suit, { color: SUIT_COLORS[card.suit] }]}>
+          <Text style={[styles.suit, { color: suitColor(card.suit) }]}>
             {SUIT_SYMBOLS[card.suit]}
           </Text>
         </View>
@@ -57,18 +60,10 @@ export default function CardSlot({ card, onPress, onRemove, disabled }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    width: 52,
-    height: 72,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
+    width: 52, height: 72, borderRadius: 8, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center', margin: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
   },
   disabled: { opacity: 0.4 },
   cardContent: { alignItems: 'center' },
