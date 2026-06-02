@@ -108,17 +108,6 @@ Tap the 💰 tab. Press **Start New Session**, enter your buy-in, and tap **End 
 
 ---
 
-## Publishing to Google Play
-
-1. Build a release AAB: `eas build --platform android --profile production`
-2. Download the `.aab` from expo.dev
-3. Create a new app in [Google Play Console](https://play.google.com/console)
-4. Upload the AAB under **Releases → Production**
-5. Fill in store listing (description, screenshots, category: Tools)
-6. Submit for review
-
----
-
 ## Running Locally
 
 ### Prerequisites
