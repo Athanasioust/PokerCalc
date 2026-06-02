@@ -1,0 +1,315 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, Alert, Modal,
+} from 'react-native';
+import * as Haptics from 'expo-haptics';
+import {
+  Session, loadSessions, startSession, endSession,
+  deleteSession, sessionProfit, sessionDuration,
+} from '../logic/sessions';
+import { useTheme } from '../ThemeContext';
+
+export default function SessionScreen() {
+  const theme = useTheme();
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [showEndModal, setShowEndModal] = useState<Session | null>(null);
+  const [buyInInput, setBuyInInput] = useState('');
+  const [cashOutInput, setCashOutInput] = useState('');
+
+  const refresh = useCallback(() => {
+    loadSessions().then(setSessions);
+  }, []);
+
+  useEffect(() => { refresh(); }, []);
+
+  const activeSession = sessions.find(s => s.endTime === null);
+
+  const completedSessions = sessions.filter(s => s.endTime !== null);
+  const totalProfit = completedSessions.reduce((sum, s) => sum + (sessionProfit(s) ?? 0), 0);
+  const totalHours = completedSessions.reduce((sum, s) => {
+    if (!s.endTime) return sum;
+    return sum + (s.endTime - s.startTime) / 3600000;
+  }, 0);
+  const hourlyRate = totalHours > 0 ? totalProfit / totalHours : null;
+
+  async function handleStart() {
+    const amount = parseFloat(buyInInput);
+    if (isNaN(amount) || amount <= 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await startSession(amount);
+    setShowStartModal(false);
+    setBuyInInput('');
+    refresh();
+  }
+
+  async function handleEnd() {
+    if (!showEndModal) return;
+    const amount = parseFloat(cashOutInput);
+    if (isNaN(amount) || amount < 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await endSession(showEndModal.id, amount);
+    setShowEndModal(null);
+    setCashOutInput('');
+    refresh();
+  }
+
+  function handleDelete(id: string) {
+    Alert.alert('Delete Session', 'Remove this session from history?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteSession(id); refresh(); } },
+    ]);
+  }
+
+  function formatDate(ts: number) {
+    return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function profitColor(p: number): string {
+    if (p > 0) return '#4ade80';
+    if (p < 0) return '#f87171';
+    return theme.textMuted;
+  }
+
+  const s = makeStyles(theme);
+
+  return (
+    <ScrollView style={s.container} contentContainerStyle={s.scroll}>
+
+      {/* Stats bar */}
+      {completedSessions.length > 0 && (
+        <View style={s.statsBar}>
+          <View style={s.statItem}>
+            <Text style={s.statValue}>{completedSessions.length}</Text>
+            <Text style={s.statLabel}>Sessions</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={[s.statValue, { color: profitColor(totalProfit) }]}>
+              {totalProfit >= 0 ? '+' : ''}{totalProfit}
+            </Text>
+            <Text style={s.statLabel}>Total P&L</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={[s.statValue, hourlyRate !== null ? { color: profitColor(hourlyRate) } : {}]}>
+              {hourlyRate !== null ? `${hourlyRate >= 0 ? '+' : ''}${hourlyRate.toFixed(1)}/h` : '—'}
+            </Text>
+            <Text style={s.statLabel}>Hourly</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Active session */}
+      {activeSession && (
+        <View style={s.activeCard}>
+          <View style={s.activeHeader}>
+            <View style={s.activeDot} />
+            <Text style={s.activeTitle}>Session in progress</Text>
+            <Text style={s.activeDuration}>{sessionDuration(activeSession)}</Text>
+          </View>
+          <Text style={s.activeBuyIn}>Buy-in: {activeSession.buyIn}</Text>
+          <TouchableOpacity
+            style={s.endBtn}
+            onPress={() => { setCashOutInput(''); setShowEndModal(activeSession); }}
+          >
+            <Text style={s.endBtnText}>End Session</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Start session button */}
+      {!activeSession && (
+        <TouchableOpacity
+          style={[s.startBtn, { backgroundColor: theme.primary }]}
+          onPress={() => { setBuyInInput(''); setShowStartModal(true); }}
+        >
+          <Text style={s.startBtnText}>+ Start New Session</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Session history */}
+      {completedSessions.length > 0 && (
+        <Text style={s.sectionTitle}>Past Sessions</Text>
+      )}
+      {completedSessions.map(session => {
+        const profit = sessionProfit(session)!;
+        return (
+          <View key={session.id} style={s.sessionCard}>
+            <View style={s.sessionTop}>
+              <Text style={s.sessionDate}>{formatDate(session.startTime)}</Text>
+              <Text style={[s.sessionProfit, { color: profitColor(profit) }]}>
+                {profit >= 0 ? '+' : ''}{profit}
+              </Text>
+            </View>
+            <View style={s.sessionBottom}>
+              <Text style={s.sessionDetail}>
+                Buy-in: {session.buyIn} → Cash-out: {session.cashOut}
+              </Text>
+              <Text style={s.sessionDuration}>{sessionDuration(session)}</Text>
+            </View>
+            <TouchableOpacity onPress={() => handleDelete(session.id)} style={s.deleteBtn}>
+              <Text style={s.deleteText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      })}
+
+      {sessions.length === 0 && (
+        <View style={s.empty}>
+          <Text style={s.emptyIcon}>♠</Text>
+          <Text style={[s.emptyTitle, { color: theme.text }]}>No sessions yet</Text>
+          <Text style={[s.emptyBody, { color: theme.textMuted }]}>
+            Tap "Start New Session" before you sit down to track your results.
+          </Text>
+        </View>
+      )}
+
+      {/* Start modal */}
+      <Modal visible={showStartModal} transparent animationType="fade">
+        <View style={s.modalBackdrop}>
+          <View style={[s.modal, { backgroundColor: theme.bgCard }]}>
+            <Text style={[s.modalTitle, { color: theme.text }]}>Start Session</Text>
+            <Text style={[s.modalLabel, { color: theme.textMuted }]}>Buy-in amount</Text>
+            <TextInput
+              style={[s.modalInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bgInput }]}
+              value={buyInInput}
+              onChangeText={setBuyInInput}
+              keyboardType="numeric"
+              placeholder="e.g. 200"
+              placeholderTextColor={theme.textMuted}
+              autoFocus
+            />
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={[s.modalBtn, { borderColor: theme.border }]} onPress={() => setShowStartModal(false)}>
+                <Text style={[s.modalBtnText, { color: theme.textMuted }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.modalBtn, s.modalBtnPrimary, { backgroundColor: theme.primary }]} onPress={handleStart}>
+                <Text style={[s.modalBtnText, { color: '#fff' }]}>Start</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* End modal */}
+      <Modal visible={showEndModal !== null} transparent animationType="fade">
+        <View style={s.modalBackdrop}>
+          <View style={[s.modal, { backgroundColor: theme.bgCard }]}>
+            <Text style={[s.modalTitle, { color: theme.text }]}>End Session</Text>
+            {showEndModal && (
+              <Text style={[s.modalLabel, { color: theme.textMuted }]}>
+                Session: {sessionDuration(showEndModal)} · Buy-in: {showEndModal.buyIn}
+              </Text>
+            )}
+            <Text style={[s.modalLabel, { color: theme.textMuted }]}>Cash-out amount</Text>
+            <TextInput
+              style={[s.modalInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bgInput }]}
+              value={cashOutInput}
+              onChangeText={setCashOutInput}
+              keyboardType="numeric"
+              placeholder="e.g. 350"
+              placeholderTextColor={theme.textMuted}
+              autoFocus
+            />
+            {cashOutInput !== '' && !isNaN(parseFloat(cashOutInput)) && showEndModal && (
+              <Text style={[s.profitPreview, {
+                color: profitColor(parseFloat(cashOutInput) - showEndModal.buyIn),
+              }]}>
+                {parseFloat(cashOutInput) - showEndModal.buyIn >= 0 ? 'Profit: +' : 'Loss: '}
+                {Math.abs(parseFloat(cashOutInput) - showEndModal.buyIn)}
+              </Text>
+            )}
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={[s.modalBtn, { borderColor: theme.border }]} onPress={() => setShowEndModal(null)}>
+                <Text style={[s.modalBtnText, { color: theme.textMuted }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.modalBtn, s.modalBtnPrimary, { backgroundColor: theme.primary }]} onPress={handleEnd}>
+                <Text style={[s.modalBtnText, { color: '#fff' }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+    </ScrollView>
+  );
+}
+
+function makeStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.bg },
+    scroll: { padding: 16, paddingBottom: 40 },
+    statsBar: {
+      flexDirection: 'row', backgroundColor: theme.bgCard,
+      borderRadius: 12, borderWidth: 1, borderColor: theme.border,
+      padding: 16, marginBottom: 16, justifyContent: 'space-around',
+    },
+    statItem: { alignItems: 'center' },
+    statValue: { fontSize: 20, fontWeight: '800', color: theme.text },
+    statLabel: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
+    statDivider: { width: 1, backgroundColor: theme.border },
+    activeCard: {
+      backgroundColor: '#1a1a2e', borderRadius: 12,
+      padding: 16, marginBottom: 16,
+    },
+    activeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4ade80', marginRight: 8 },
+    activeTitle: { fontSize: 15, fontWeight: '700', color: '#fff', flex: 1 },
+    activeDuration: { fontSize: 13, color: '#aaa' },
+    activeBuyIn: { fontSize: 13, color: '#aaa', marginBottom: 12 },
+    endBtn: {
+      backgroundColor: '#fff', borderRadius: 8,
+      padding: 10, alignItems: 'center',
+    },
+    endBtnText: { fontSize: 14, fontWeight: '700', color: '#1a1a2e' },
+    startBtn: {
+      borderRadius: 12, padding: 16,
+      alignItems: 'center', marginBottom: 16,
+    },
+    startBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+    sectionTitle: {
+      fontSize: 12, fontWeight: '700', color: theme.textMuted,
+      textTransform: 'uppercase', letterSpacing: 0.8,
+      marginBottom: 8, marginTop: 8,
+    },
+    sessionCard: {
+      backgroundColor: theme.bgCard, borderRadius: 12,
+      borderWidth: 1, borderColor: theme.border,
+      padding: 14, marginBottom: 10,
+    },
+    sessionTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    sessionDate: { fontSize: 14, fontWeight: '600', color: theme.text },
+    sessionProfit: { fontSize: 16, fontWeight: '800' },
+    sessionBottom: { flexDirection: 'row', justifyContent: 'space-between' },
+    sessionDetail: { fontSize: 12, color: theme.textMuted },
+    sessionDuration: { fontSize: 12, color: theme.textMuted },
+    deleteBtn: { marginTop: 10, alignItems: 'flex-end' },
+    deleteText: { fontSize: 12, color: '#ef4444' },
+    empty: { alignItems: 'center', marginTop: 60 },
+    emptyIcon: { fontSize: 48, color: '#888', marginBottom: 12 },
+    emptyTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+    emptyBody: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+    modalBackdrop: {
+      flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center', alignItems: 'center', padding: 24,
+    },
+    modal: { borderRadius: 16, padding: 24, width: '100%' },
+    modalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 16 },
+    modalLabel: { fontSize: 13, marginBottom: 6 },
+    modalInput: {
+      borderWidth: 1.5, borderRadius: 10,
+      paddingHorizontal: 14, paddingVertical: 12,
+      fontSize: 24, fontWeight: '700', marginBottom: 8,
+    },
+    profitPreview: { fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+    modalBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
+    modalBtn: {
+      flex: 1, padding: 12, borderRadius: 10,
+      alignItems: 'center', borderWidth: 1,
+    },
+    modalBtnPrimary: { borderWidth: 0 },
+    modalBtnText: { fontSize: 15, fontWeight: '700' },
+  });
+}

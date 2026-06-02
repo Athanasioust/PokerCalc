@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
-  TouchableOpacity, Alert,
+  TouchableOpacity, Alert, Share,
 } from 'react-native';
 import { HandRecord, loadHistory, clearHistory } from '../logic/history';
 import { RANK_LABELS, SUIT_SYMBOLS, Suit } from '../logic/deck';
@@ -31,6 +31,27 @@ export default function HistoryScreen() {
         },
       },
     ]);
+  }
+
+  function shareHand(hand: HandRecord) {
+    const fmt = (c: { rank: import('../logic/deck').Rank; suit: Suit }) =>
+      `${RANK_LABELS[c.rank]}${SUIT_SYMBOLS[c.suit]}`;
+    const hole = hand.holeCards.map(fmt).join(' ');
+    const board = hand.board.map(fmt).join(' ');
+    const draw = hand.selectedDraw
+      ? (DRAW_LABELS[hand.selectedDraw as keyof typeof DRAW_LABELS] ?? hand.selectedDraw)
+      : null;
+    const handName = hand.handRank ? HAND_LABELS[hand.handRank] : null;
+
+    let msg = `PokerCalc — Hand Analysis\n`;
+    msg += `Hand: ${hole}\n`;
+    if (board.length > 0) msg += `Board: ${board}\n`;
+    if (handName) msg += `Made hand: ${handName}\n`;
+    if (draw && hand.outs !== null) msg += `Drawing to: ${draw} (${hand.outs} outs)\n`;
+    if (hand.exactPct !== null) msg += `Odds: ${hand.exactPct}% exact\n`;
+    msg += `\nCalculated with PokerCalc`;
+
+    Share.share({ message: msg });
   }
 
   function formatTime(ts: number): string {
@@ -99,6 +120,12 @@ export default function HistoryScreen() {
                   </Text>
                 </View>
               )}
+              <TouchableOpacity
+                style={[styles.shareBtn, { borderColor: theme.border }]}
+                onPress={() => shareHand(hand)}
+              >
+                <Text style={[styles.shareText, { color: theme.textMuted }]}>Share Hand</Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
@@ -166,4 +193,10 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 12 },
   statValue: { fontSize: 13, fontWeight: '700' },
+  shareBtn: {
+    marginTop: 10, paddingVertical: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+  },
+  shareText: { fontSize: 13 },
 });

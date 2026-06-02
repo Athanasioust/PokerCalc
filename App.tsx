@@ -8,14 +8,16 @@ import MainScreen from './src/screens/MainScreen';
 import ReferenceScreen from './src/screens/ReferenceScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import SessionScreen from './src/screens/SessionScreen';
 
-type Tab = 'calc' | 'history' | 'ref' | 'settings';
+type Tab = 'calc' | 'history' | 'sessions' | 'ref' | 'settings';
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
-  { id: 'calc',     icon: '🃏', label: 'Calculator' },
-  { id: 'history',  icon: '🕐', label: 'History'    },
-  { id: 'ref',      icon: '📋', label: 'Reference'  },
-  { id: 'settings', icon: '⚙️',  label: 'Settings'  },
+  { id: 'calc',     icon: '🃏', label: 'Calc'     },
+  { id: 'history',  icon: '🕐', label: 'History'  },
+  { id: 'sessions', icon: '💰', label: 'Sessions' },
+  { id: 'ref',      icon: '📋', label: 'Ref'      },
+  { id: 'settings', icon: '⚙️',  label: 'Settings' },
 ];
 
 function TabBar({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) => void }) {
@@ -56,6 +58,7 @@ function AppContent() {
         <View style={styles.content}>
           {activeTab === 'calc'     && <MainScreen />}
           {activeTab === 'history'  && <HistoryScreen />}
+          {activeTab === 'sessions' && <SessionScreen />}
           {activeTab === 'ref'      && <ReferenceScreen />}
           {activeTab === 'settings' && <SettingsScreen />}
         </View>
@@ -80,9 +83,9 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   tabBar: { flexDirection: 'row', borderTopWidth: 1 },
   tab: {
-    flex: 1, alignItems: 'center', paddingVertical: 10,
+    flex: 1, alignItems: 'center', paddingVertical: 8,
     borderTopWidth: 2, borderTopColor: 'transparent',
   },
-  tabIcon: { fontSize: 18, marginBottom: 2 },
-  tabLabel: { fontSize: 10, fontWeight: '500' },
+  tabIcon: { fontSize: 16, marginBottom: 1 },
+  tabLabel: { fontSize: 9, fontWeight: '500' },
 });
