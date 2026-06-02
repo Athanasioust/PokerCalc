@@ -37,11 +37,12 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
 
   const villainFull = villainCards.every(Boolean);
   const heroFull = heroHole.length >= 2;
+  const hasFlop = board.length >= 3;
 
   const equity = useMemo(() => {
-    if (!villainFull || !heroFull) return null;
+    if (!villainFull || !heroFull || !hasFlop) return null;
     return calculateEquity(heroHole, villainCards as Card[], board);
-  }, [villainFull, heroFull, JSON.stringify(villainCards), JSON.stringify(heroHole), JSON.stringify(board)]);
+  }, [villainFull, heroFull, hasFlop, JSON.stringify(villainCards), JSON.stringify(heroHole), JSON.stringify(board)]);
 
   return (
     <View style={styles.container}>
@@ -89,6 +90,9 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
 
       {!heroFull && (
         <Text style={styles.hint}>Enter your hole cards first</Text>
+      )}
+      {heroFull && villainFull && !hasFlop && (
+        <Text style={styles.hint}>Enter the flop to calculate equity</Text>
       )}
 
       <CardPicker
