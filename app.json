@@ -30,6 +30,11 @@
       "favicon": "./assets/favicon.png"
     },
     "description": "A fast poker odds calculator for live games. Calculate outs, percentages, pot odds, and equity in seconds.",
-    "githubUrl": "https://github.com/Athanasioust/PokerCalc"
+    "githubUrl": "https://github.com/Athanasioust/PokerCalc",
+    "extra": {
+      "eas": {
+        "projectId": "d8fa96ff-8462-4cbc-b6d8-c76dc03b5317"
+      }
+    }
   }
 }

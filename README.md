@@ -50,6 +50,12 @@ A mobile poker odds calculator built with React Native and Expo. Designed for li
 
 ---
 
+## Download
+
+The latest APK can be built via [EAS Build](https://expo.dev/eas). See **Running Locally** below for setup.
+
+---
+
 ## Screenshots
 
 > Coming soon
@@ -99,6 +105,17 @@ Enter opponent hole cards and tap **+ Add Villain** for multi-way pots. Results 
 
 ### Session Tracker
 Tap the 💰 tab. Press **Start New Session**, enter your buy-in, and tap **End Session** when you leave the table.
+
+---
+
+## Publishing to Google Play
+
+1. Build a release AAB: `eas build --platform android --profile production`
+2. Download the `.aab` from expo.dev
+3. Create a new app in [Google Play Console](https://play.google.com/console)
+4. Upload the AAB under **Releases → Production**
+5. Fill in store listing (description, screenshots, category: Tools)
+6. Submit for review
 
 ---
 
