@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
 } from 'react-native';
@@ -14,6 +14,8 @@ import { Card } from '../logic/deck';
 import { DrawType, availableDraws, detectComboDraws } from '../logic/outsCalculator';
 import { calculatePercentages, PercentageResult } from '../logic/percentages';
 import { evaluateBestHand } from '../logic/handEvaluator';
+import { saveHand } from '../logic/history';
+import { useTheme } from '../ThemeContext';
 
 type Variant = 'holdem' | 'omaha';
 
@@ -23,7 +25,16 @@ type SlotTarget =
   | { section: 'turn' }
   | { section: 'river' };
 
+const ONBOARDING_STEPS = [
+  '1. Tap a card slot to pick a card',
+  '2. Choose rank, then suit — 2 taps per card',
+  '3. Enter your hole cards + the flop',
+  '4. Select a draw to see your outs & odds',
+  '   Long-press any card to remove it',
+];
+
 export default function MainScreen() {
+  const theme = useTheme();
   const [variant, setVariant] = useState<Variant>('holdem');
   const [holeCards, setHoleCards] = useState<(Card | null)[]>([null, null]);
   const [flop, setFlop] = useState<(Card | null)[]>([null, null, null]);
@@ -31,8 +42,10 @@ export default function MainScreen() {
   const [river, setRiver] = useState<Card | null>(null);
   const [selectedDraw, setSelectedDraw] = useState<DrawType | null>(null);
   const [pickerTarget, setPickerTarget] = useState<SlotTarget | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(true);
 
   const holeCount = variant === 'holdem' ? 2 : 4;
+  const hasAnyCard = holeCards.some(Boolean) || flop.some(Boolean) || turn || river;
 
   function switchVariant(v: Variant) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -53,12 +66,13 @@ export default function MainScreen() {
     ...(flop.filter(Boolean) as Card[]),
     ...(turn ? [turn] : []),
   ];
+  const fullBoard = [...knownBoard, ...(river ? [river] : [])];
 
   const hasMinCards = knownHoleCards.length >= 2 && knownBoard.length >= 3;
 
   const currentHand = useMemo(
-    () => evaluateBestHand(knownHoleCards, [...knownBoard, ...(river ? [river] : [])]),
-    [JSON.stringify(knownHoleCards), JSON.stringify(knownBoard), river]
+    () => evaluateBestHand(knownHoleCards, fullBoard),
+    [JSON.stringify(knownHoleCards), JSON.stringify(fullBoard)]
   );
 
   const draws = useMemo(
@@ -77,7 +91,34 @@ export default function MainScreen() {
     return calculatePercentages(selectedDraw, knownHoleCards, knownBoard);
   }, [selectedDraw, JSON.stringify(knownHoleCards), JSON.stringify(knownBoard)]);
 
-  const equityForPotOdds = result?.exact ?? null;
+  // Auto-save hand to history when we get a result
+  useEffect(() => {
+    if (!result || knownHoleCards.length < 2) return;
+    saveHand({
+      variant,
+      holeCards: knownHoleCards,
+      board: fullBoard,
+      handRank: currentHand,
+      selectedDraw,
+      outs: result.outs,
+      exactPct: result.exact,
+    });
+  }, [result]);
+
+  // Build the used cards list, excluding the card in the current slot being edited
+  const usedCardsForPicker = useMemo(() => {
+    if (!pickerTarget) return allKnownCards;
+    const { section } = pickerTarget;
+    let slotCard: Card | null = null;
+    if (section === 'hole') slotCard = holeCards[(pickerTarget as any).index];
+    else if (section === 'flop') slotCard = flop[(pickerTarget as any).index];
+    else if (section === 'turn') slotCard = turn;
+    else if (section === 'river') slotCard = river;
+    if (!slotCard) return allKnownCards;
+    return allKnownCards.filter(
+      c => !(c.rank === slotCard!.rank && c.suit === slotCard!.suit)
+    );
+  }, [pickerTarget, JSON.stringify(allKnownCards)]);
 
   function openPicker(target: SlotTarget) {
     setPickerTarget(target);
@@ -103,7 +144,6 @@ export default function MainScreen() {
   function handleCardSelect(card: Card) {
     if (!pickerTarget) return;
     const { section } = pickerTarget;
-
     if (section === 'hole') {
       const updated = [...holeCards];
       updated[(pickerTarget as any).index] = card;
@@ -117,7 +157,6 @@ export default function MainScreen() {
     } else if (section === 'river') {
       setRiver(card);
     }
-
     setPickerTarget(null);
     setSelectedDraw(null);
   }
@@ -132,26 +171,41 @@ export default function MainScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>PokerCalc</Text>
-          <TouchableOpacity onPress={clearAll} style={styles.clearBtn}>
-            <Text style={styles.clearText}>Clear</Text>
+          <Text style={[styles.title, { color: theme.text }]}>PokerCalc</Text>
+          <TouchableOpacity onPress={clearAll} style={[styles.clearBtn, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
+            <Text style={[styles.clearText, { color: theme.textMuted }]}>Clear</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Onboarding hint — disappears once cards are entered */}
+        {showOnboarding && !hasAnyCard && (
+          <View style={[styles.onboarding, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
+            <View style={styles.onboardingHeader}>
+              <Text style={[styles.onboardingTitle, { color: theme.text }]}>How to use</Text>
+              <TouchableOpacity onPress={() => setShowOnboarding(false)}>
+                <Text style={[styles.onboardingDismiss, { color: theme.textMuted }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            {ONBOARDING_STEPS.map((step, i) => (
+              <Text key={i} style={[styles.onboardingStep, { color: theme.textSecondary }]}>{step}</Text>
+            ))}
+          </View>
+        )}
+
         {/* Variant toggle */}
-        <View style={styles.toggle}>
+        <View style={[styles.toggle, { backgroundColor: theme.toggle }]}>
           {(['holdem', 'omaha'] as Variant[]).map(v => (
             <TouchableOpacity
               key={v}
-              style={[styles.toggleBtn, variant === v && styles.toggleActive]}
+              style={[styles.toggleBtn, variant === v && [styles.toggleActive, { backgroundColor: theme.toggleActive }]]}
               onPress={() => switchVariant(v)}
             >
-              <Text style={[styles.toggleText, variant === v && styles.toggleTextActive]}>
+              <Text style={[styles.toggleText, { color: theme.textMuted }, variant === v && [styles.toggleTextActive, { color: theme.text }]]}>
                 {v === 'holdem' ? "Hold'em" : 'Omaha'}
               </Text>
             </TouchableOpacity>
@@ -166,7 +220,7 @@ export default function MainScreen() {
         )}
 
         {/* Hole cards */}
-        <Section label="Your Hand">
+        <Section label="Your Hand" theme={theme}>
           <View style={styles.cardRow}>
             {Array.from({ length: holeCount }).map((_, i) => (
               <CardSlot
@@ -180,7 +234,7 @@ export default function MainScreen() {
         </Section>
 
         {/* Flop */}
-        <Section label="Flop">
+        <Section label="Flop" theme={theme}>
           <View style={styles.cardRow}>
             {[0, 1, 2].map(i => (
               <CardSlot
@@ -194,7 +248,7 @@ export default function MainScreen() {
         </Section>
 
         {/* Turn */}
-        <Section label="Turn">
+        <Section label="Turn" theme={theme}>
           <View style={styles.cardRow}>
             <CardSlot
               card={turn}
@@ -205,7 +259,7 @@ export default function MainScreen() {
         </Section>
 
         {/* River */}
-        <Section label="River">
+        <Section label="River" theme={theme}>
           <View style={styles.cardRow}>
             <CardSlot
               card={river}
@@ -218,7 +272,7 @@ export default function MainScreen() {
         {/* Combo draws banner */}
         {combos.map((combo, i) => (
           <View key={i} style={styles.comboBanner}>
-            <Text style={styles.comboLabel}>Combo Draw: {combo.label}</Text>
+            <Text style={styles.comboLabel}>Combo: {combo.label}</Text>
             <Text style={styles.comboOuts}>{combo.outs} outs</Text>
           </View>
         ))}
@@ -242,24 +296,23 @@ export default function MainScreen() {
 
         {/* Pot odds */}
         <View style={styles.sectionWrap}>
-          <PotOdds equity={equityForPotOdds} />
+          <PotOdds equity={result?.exact ?? null} />
         </View>
 
         {/* Equity vs villain */}
         <View style={styles.sectionWrap}>
           <EquityCalculator
             heroHole={knownHoleCards}
-            board={[...knownBoard, ...(river ? [river] : [])]}
+            board={fullBoard}
             allKnownCards={allKnownCards}
           />
         </View>
 
       </ScrollView>
 
-      {/* Card picker modal */}
       <CardPicker
         visible={pickerTarget !== null}
-        usedCards={allKnownCards}
+        usedCards={usedCardsForPicker}
         onSelect={handleCardSelect}
         onClose={() => setPickerTarget(null)}
       />
@@ -267,111 +320,62 @@ export default function MainScreen() {
   );
 }
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({ label, children, theme }: { label: string; children: React.ReactNode; theme: any }) {
   return (
     <View style={styles.sectionWrap}>
-      <Text style={styles.sectionLabel}>{label}</Text>
+      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{label}</Text>
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#f5f5f0',
-  },
-  scroll: {
-    padding: 16,
-    paddingBottom: 40,
-  },
+  safe: { flex: 1 },
+  scroll: { padding: 16, paddingBottom: 40 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 20,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1a1a2e',
-  },
+  title: { fontSize: 28, fontWeight: '800' },
   clearBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
+    paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: 8, borderWidth: 1,
   },
-  clearText: {
-    fontSize: 14,
-    color: '#888',
+  clearText: { fontSize: 14 },
+  onboarding: {
+    borderRadius: 12, borderWidth: 1,
+    padding: 16, marginBottom: 16,
   },
+  onboardingHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 10,
+  },
+  onboardingTitle: { fontSize: 15, fontWeight: '700' },
+  onboardingDismiss: { fontSize: 18, padding: 4 },
+  onboardingStep: { fontSize: 13, lineHeight: 22 },
   toggle: {
-    flexDirection: 'row',
-    backgroundColor: '#e8e8e8',
-    borderRadius: 10,
-    padding: 3,
-    marginBottom: 16,
+    flexDirection: 'row', borderRadius: 10,
+    padding: 3, marginBottom: 16,
   },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
+  toggleBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
   toggleActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
   },
-  toggleText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#888',
-  },
-  toggleTextActive: {
-    color: '#1a1a2e',
-  },
-  sectionWrap: {
-    marginBottom: 20,
-  },
+  toggleText: { fontSize: 15, fontWeight: '600' },
+  toggleTextActive: {},
+  sectionWrap: { marginBottom: 20 },
   sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
+    fontSize: 13, fontWeight: '600',
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
   },
-  cardRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
+  cardRow: { flexDirection: 'row', flexWrap: 'wrap' },
   comboBanner: {
-    backgroundColor: '#fef3c7',
-    borderWidth: 1,
-    borderColor: '#fbbf24',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fbbf24',
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 12,
   },
-  comboLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#92400e',
-  },
-  comboOuts: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#92400e',
-  },
+  comboLabel: { fontSize: 14, fontWeight: '600', color: '#92400e' },
+  comboOuts: { fontSize: 16, fontWeight: '800', color: '#92400e' },
 });

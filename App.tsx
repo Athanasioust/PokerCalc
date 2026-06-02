@@ -2,82 +2,93 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from 'react-native';
+import { ThemeProvider, useTheme } from './src/ThemeContext';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import MainScreen from './src/screens/MainScreen';
 import ReferenceScreen from './src/screens/ReferenceScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 
-type Tab = 'calc' | 'ref';
+type Tab = 'calc' | 'ref' | 'history';
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('calc');
+function TabBar({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) => void }) {
+  const theme = useTheme();
+  const tabs: { id: Tab; icon: string; label: string }[] = [
+    { id: 'calc', icon: '🃏', label: 'Calculator' },
+    { id: 'history', icon: '🕐', label: 'History' },
+    { id: 'ref', icon: '📋', label: 'Reference' },
+  ];
 
   return (
-    <SafeAreaProvider>
-      <View style={styles.root}>
-        <StatusBar style="dark" />
+    <SafeAreaView
+      edges={['bottom']}
+      style={[styles.tabBar, { backgroundColor: theme.tabBar, borderTopColor: theme.border }]}
+    >
+      {tabs.map(tab => (
+        <TouchableOpacity
+          key={tab.id}
+          style={[styles.tab, activeTab === tab.id && [styles.tabActive, { borderTopColor: theme.primary }]]}
+          onPress={() => onSelect(tab.id)}
+        >
+          <Text style={styles.tabIcon}>{tab.icon}</Text>
+          <Text style={[
+            styles.tabLabel,
+            { color: theme.textMuted },
+            activeTab === tab.id && [styles.tabLabelActive, { color: theme.text }],
+          ]}>
+            {tab.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </SafeAreaView>
+  );
+}
 
+function AppContent() {
+  const [activeTab, setActiveTab] = useState<Tab>('calc');
+  const scheme = useColorScheme();
+
+  return (
+    <View style={styles.root}>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <ErrorBoundary>
         <View style={styles.content}>
-          {activeTab === 'calc' ? <MainScreen /> : <ReferenceScreen />}
+          {activeTab === 'calc' && <MainScreen />}
+          {activeTab === 'history' && <HistoryScreen />}
+          {activeTab === 'ref' && <ReferenceScreen />}
         </View>
+      </ErrorBoundary>
+      <TabBar activeTab={activeTab} onSelect={setActiveTab} />
+    </View>
+  );
+}
 
-        <SafeAreaView edges={['bottom']} style={styles.tabBar}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'calc' && styles.tabActive]}
-            onPress={() => setActiveTab('calc')}
-          >
-            <Text style={styles.tabIcon}>🃏</Text>
-            <Text style={[styles.tabLabel, activeTab === 'calc' && styles.tabLabelActive]}>
-              Calculator
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'ref' && styles.tabActive]}
-            onPress={() => setActiveTab('ref')}
-          >
-            <Text style={styles.tabIcon}>📋</Text>
-            <Text style={[styles.tabLabel, activeTab === 'ref' && styles.tabLabelActive]}>
-              Reference
-            </Text>
-          </TouchableOpacity>
-        </SafeAreaView>
-      </View>
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#f5f5f0',
-  },
-  content: {
-    flex: 1,
-  },
+  root: { flex: 1 },
+  content: { flex: 1 },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
-  },
-  tabActive: {
     borderTopWidth: 2,
-    borderTopColor: '#1a1a2e',
+    borderTopColor: 'transparent',
   },
-  tabIcon: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  tabLabel: {
-    fontSize: 11,
-    color: '#999',
-    fontWeight: '500',
-  },
-  tabLabelActive: {
-    color: '#1a1a2e',
-    fontWeight: '700',
-  },
+  tabActive: {},
+  tabIcon: { fontSize: 20, marginBottom: 2 },
+  tabLabel: { fontSize: 11, fontWeight: '500' },
+  tabLabelActive: { fontWeight: '700' },
 });

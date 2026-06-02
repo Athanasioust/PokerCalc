@@ -1,17 +1,25 @@
 {
   "expo": {
     "name": "PokerCalc",
-    "slug": "PokerCalc",
+    "slug": "pokercalc",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a2e"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pokercalc.app"
     },
     "android": {
+      "package": "com.pokercalc.app",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1a1a2e",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -20,6 +28,8 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "description": "A fast poker odds calculator for live games. Calculate outs, percentages, pot odds, and equity in seconds.",
+    "githubUrl": "https://github.com/Athanasioust/PokerCalc"
   }
 }
