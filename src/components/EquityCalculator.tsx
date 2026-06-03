@@ -198,14 +198,25 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
               </Text>
               <View style={styles.villainActions}>
                 {advancedMode && singleVillain && (
-                  <TouchableOpacity
-                    onPress={() => toggleMode(vi)}
-                    style={[styles.modeToggle, { borderColor: theme.primary, backgroundColor: mode === 'range' ? theme.primary : 'transparent' }]}
-                  >
-                    <Text style={[styles.modeToggleText, { color: mode === 'range' ? '#fff' : theme.primary }]}>
-                      {mode === 'range' ? 'Range' : 'Cards'}
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={[styles.modeSegment, { borderColor: theme.border, backgroundColor: theme.bgMuted }]}>
+                    {(['cards', 'range'] as VillainMode[]).map(m => (
+                      <TouchableOpacity
+                        key={m}
+                        onPress={() => { if (mode !== m) toggleMode(vi); }}
+                        style={[
+                          styles.modeOption,
+                          mode === m && { backgroundColor: theme.primary },
+                        ]}
+                      >
+                        <Text style={[
+                          styles.modeOptionText,
+                          { color: mode === m ? '#fff' : theme.textMuted },
+                        ]}>
+                          {m === 'cards' ? 'Cards' : 'Range'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 )}
                 {villains.length > 1 && (
                   <TouchableOpacity onPress={() => removeVillain(vi)}>
@@ -230,6 +241,7 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
               <RangeSelector
                 selected={villainRanges[vi]}
                 onChange={(r) => updateRange(vi, r)}
+                containerPadding={32}
               />
             )}
           </View>
@@ -323,8 +335,9 @@ const styles = StyleSheet.create({
   villainHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   villainName: { fontSize: 13, fontWeight: '500' },
   villainActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  modeToggle: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, borderWidth: 1.5 },
-  modeToggleText: { fontSize: 11, fontWeight: '700' },
+  modeSegment: { flexDirection: 'row', borderRadius: 8, borderWidth: 1, overflow: 'hidden', padding: 2, gap: 2 },
+  modeOption: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
+  modeOptionText: { fontSize: 11, fontWeight: '700' },
   removeText: { fontSize: 12 },
   cardRow: { flexDirection: 'row' },
   loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, gap: 8 },

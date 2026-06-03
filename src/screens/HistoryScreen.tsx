@@ -136,7 +136,7 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 16, paddingBottom: 40 },
+  scroll: { padding: 16, paddingTop: 24, paddingBottom: 40 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

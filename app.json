@@ -4,10 +4,10 @@
     "slug": "pokercalc",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app_icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/icon.png",
+      "image": "./assets/app_icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#1a1a2e"
     },
@@ -20,9 +20,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#1a1a2e",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/app_icon.png"
       },
       "predictiveBackGestureEnabled": false
     },

@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import {
   Session, loadSessions, startSession, endSession,
@@ -84,7 +85,7 @@ export default function SessionScreen() {
   const s = makeStyles(theme);
 
   return (
-    <View style={s.container}>
+    <SafeAreaView edges={['top']} style={s.container}>
     <ScrollView style={s.flex} contentContainerStyle={s.scroll}>
 
       {/* Stats bar */}
@@ -304,7 +305,7 @@ export default function SessionScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -312,7 +313,7 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.bg },
     flex: { flex: 1 },
-    scroll: { padding: 16, paddingBottom: 16 },
+    scroll: { padding: 16, paddingTop: 24, paddingBottom: 16 },
     footer: {
       padding: 16, paddingBottom: 24,
       borderTopWidth: StyleSheet.hairlineWidth,

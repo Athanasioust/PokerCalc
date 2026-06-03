@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { SettingsProvider } from './src/SettingsContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -13,12 +14,12 @@ import SessionScreen from './src/screens/SessionScreen';
 
 type Tab = 'calc' | 'history' | 'sessions' | 'ref' | 'settings';
 
-const TABS: { id: Tab; icon: string; label: string }[] = [
-  { id: 'calc',     icon: '🃏', label: 'Calc'     },
-  { id: 'history',  icon: '🕐', label: 'History'  },
-  { id: 'sessions', icon: '💰', label: 'Sessions' },
-  { id: 'ref',      icon: '📋', label: 'Ref'      },
-  { id: 'settings', icon: '⚙️',  label: 'Settings' },
+const TABS: { id: Tab; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap; label: string }[] = [
+  { id: 'calc',     icon: 'calculator-outline',  iconActive: 'calculator',   label: 'Calc'     },
+  { id: 'history',  icon: 'time-outline',         iconActive: 'time',         label: 'History'  },
+  { id: 'sessions', icon: 'wallet-outline',        iconActive: 'wallet',       label: 'Sessions' },
+  { id: 'ref',      icon: 'book-outline',          iconActive: 'book',         label: 'Guide'    },
+  { id: 'settings', icon: 'settings-outline',      iconActive: 'settings',     label: 'Settings' },
 ];
 
 function TabBar({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) => void }) {
@@ -26,24 +27,35 @@ function TabBar({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) =>
   return (
     <SafeAreaView
       edges={['bottom']}
-      style={[styles.tabBar, { backgroundColor: theme.tabBar, borderTopColor: theme.border }]}
+      style={[
+        styles.tabBar,
+        {
+          backgroundColor: theme.tabBar,
+          borderTopColor: theme.border,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: theme.isDark ? 0.25 : 0.08,
+          shadowRadius: 6,
+          elevation: 12,
+        },
+      ]}
     >
-      {TABS.map(tab => (
-        <TouchableOpacity
-          key={tab.id}
-          style={[styles.tab, activeTab === tab.id && { borderTopColor: theme.primary, borderTopWidth: 2 }]}
-          onPress={() => onSelect(tab.id)}
-        >
-          <Text style={styles.tabIcon}>{tab.icon}</Text>
-          <Text style={[
-            styles.tabLabel,
-            { color: theme.textMuted },
-            activeTab === tab.id && { color: theme.text, fontWeight: '700' },
-          ]}>
-            {tab.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+      {TABS.map(tab => {
+        const active = activeTab === tab.id;
+        const color = active ? theme.primary : theme.textMuted;
+        return (
+          <TouchableOpacity
+            key={tab.id}
+            style={[styles.tab, active && { borderTopColor: theme.primary, borderTopWidth: 2 }]}
+            onPress={() => onSelect(tab.id)}
+          >
+            <Ionicons name={active ? tab.iconActive : tab.icon} size={24} color={color} />
+            <Text style={[styles.tabLabel, { color }, active && styles.tabLabelActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </SafeAreaView>
   );
 }
@@ -57,7 +69,9 @@ function AppContent() {
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <ErrorBoundary>
         <View style={styles.content}>
-          {activeTab === 'calc'     && <MainScreen />}
+          <View style={[styles.content, { display: activeTab === 'calc' ? 'flex' : 'none' }]}>
+            <MainScreen />
+          </View>
           {activeTab === 'history'  && <HistoryScreen />}
           {activeTab === 'sessions' && <SessionScreen />}
           {activeTab === 'ref'      && <ReferenceScreen />}
@@ -89,6 +103,6 @@ const styles = StyleSheet.create({
     flex: 1, alignItems: 'center', paddingVertical: 8,
     borderTopWidth: 2, borderTopColor: 'transparent',
   },
-  tabIcon: { fontSize: 16, marginBottom: 1 },
-  tabLabel: { fontSize: 9, fontWeight: '500' },
+  tabLabel: { fontSize: 11, fontWeight: '500', marginTop: 3 },
+  tabLabelActive: { fontWeight: '700' },
 });

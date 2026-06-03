@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    paddingBottom: 32,
+    paddingBottom: 8,
   },
   handle: {
     width: 40, height: 4, borderRadius: 2,

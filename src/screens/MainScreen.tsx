@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import CardSlot from '../components/CardSlot';
 import CardPicker from '../components/CardPicker';
@@ -16,6 +17,7 @@ import { calculatePercentages, PercentageResult } from '../logic/percentages';
 import { evaluateBestHand } from '../logic/handEvaluator';
 import { saveHand } from '../logic/history';
 import { useTheme } from '../ThemeContext';
+import TutorialModal from '../components/TutorialModal';
 
 type Variant = 'holdem' | 'omaha';
 
@@ -43,14 +45,21 @@ export default function MainScreen() {
   const [selectedDraw, setSelectedDraw] = useState<DrawType | null>(null);
   const [pickerTarget, setPickerTarget] = useState<SlotTarget | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const lastSavedKeyRef = useRef<string>('');
 
   const holeCount = variant === 'holdem' ? 2 : 4;
   const hasAnyCard = holeCards.some(Boolean) || flop.some(Boolean) || turn || river;
 
   function switchVariant(v: Variant) {
+    if (v === variant) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setVariant(v);
-    setHoleCards(Array(v === 'holdem' ? 2 : 4).fill(null));
+    if (v === 'omaha') {
+      setHoleCards([holeCards[0] ?? null, holeCards[1] ?? null, null, null]);
+    } else {
+      setHoleCards([holeCards[0] ?? null, holeCards[1] ?? null]);
+    }
     setSelectedDraw(null);
   }
 
@@ -91,9 +100,12 @@ export default function MainScreen() {
     return calculatePercentages(selectedDraw, knownHoleCards, knownBoard);
   }, [selectedDraw, JSON.stringify(knownHoleCards), JSON.stringify(knownBoard)]);
 
-  // Auto-save hand to history when we get a result
+  // Auto-save hand to history when we get a result — one entry per unique hand+board
   useEffect(() => {
     if (!result || knownHoleCards.length < 2) return;
+    const key = JSON.stringify({ variant, holeCards: knownHoleCards, board: fullBoard });
+    if (key === lastSavedKeyRef.current) return;
+    lastSavedKeyRef.current = key;
     saveHand({
       variant,
       holeCards: knownHoleCards,
@@ -141,24 +153,78 @@ export default function MainScreen() {
     setSelectedDraw(null);
   }
 
+  function findNextEmptySlot(
+    current: SlotTarget,
+    hc: (Card | null)[],
+    fp: (Card | null)[],
+    tn: Card | null,
+    rv: Card | null,
+  ): SlotTarget | null {
+    const slots: SlotTarget[] = [
+      ...Array.from({ length: hc.length }, (_, i) => ({ section: 'hole' as const, index: i })),
+      { section: 'flop' as const, index: 0 },
+      { section: 'flop' as const, index: 1 },
+      { section: 'flop' as const, index: 2 },
+      { section: 'turn' as const },
+      { section: 'river' as const },
+    ];
+    const currentIdx = slots.findIndex(s => {
+      if (s.section !== current.section) return false;
+      if ((s.section === 'hole' || s.section === 'flop') && (current.section === 'hole' || current.section === 'flop')) {
+        return (s as any).index === (current as any).index;
+      }
+      return true;
+    });
+    for (let i = currentIdx + 1; i < slots.length; i++) {
+      const slot = slots[i];
+      let card: Card | null = null;
+      if (slot.section === 'hole') card = hc[(slot as any).index];
+      else if (slot.section === 'flop') card = fp[(slot as any).index];
+      else if (slot.section === 'turn') card = tn;
+      else if (slot.section === 'river') card = rv;
+      if (!card) return slot;
+    }
+    return null;
+  }
+
   function handleCardSelect(card: Card) {
     if (!pickerTarget) return;
     const { section } = pickerTarget;
+
+    let wasEmpty = false;
+    let updatedHole = holeCards;
+    let updatedFlop = flop;
+    let updatedTurn = turn;
+    let updatedRiver = river;
+
     if (section === 'hole') {
-      const updated = [...holeCards];
-      updated[(pickerTarget as any).index] = card;
-      setHoleCards(updated);
+      wasEmpty = holeCards[(pickerTarget as any).index] === null;
+      updatedHole = [...holeCards];
+      updatedHole[(pickerTarget as any).index] = card;
+      setHoleCards(updatedHole);
     } else if (section === 'flop') {
-      const updated = [...flop];
-      updated[(pickerTarget as any).index] = card;
-      setFlop(updated);
+      wasEmpty = flop[(pickerTarget as any).index] === null;
+      updatedFlop = [...flop];
+      updatedFlop[(pickerTarget as any).index] = card;
+      setFlop(updatedFlop);
     } else if (section === 'turn') {
+      wasEmpty = turn === null;
+      updatedTurn = card;
       setTurn(card);
     } else if (section === 'river') {
+      wasEmpty = river === null;
+      updatedRiver = card;
       setRiver(card);
     }
-    setPickerTarget(null);
+
     setSelectedDraw(null);
+
+    if (wasEmpty) {
+      const next = findNextEmptySlot(pickerTarget, updatedHole, updatedFlop, updatedTurn, updatedRiver);
+      setPickerTarget(next);
+    } else {
+      setPickerTarget(null);
+    }
   }
 
   function clearAll() {
@@ -176,10 +242,22 @@ export default function MainScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>PokerCalc</Text>
-          <TouchableOpacity onPress={clearAll} style={[styles.clearBtn, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
-            <Text style={[styles.clearText, { color: theme.textMuted }]}>Clear</Text>
-          </TouchableOpacity>
+          <View style={styles.titleRow}>
+            <Image source={require('../../assets/app_icon.png')} style={styles.headerIcon} />
+            <Text style={[styles.title, { color: theme.text }]}>PokerCalc</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => setShowTutorial(true)}
+              style={[styles.helpBtn, { borderColor: theme.border, backgroundColor: theme.bgCard }]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="help-circle-outline" size={20} color={theme.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={clearAll} style={[styles.clearBtn, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
+              <Text style={[styles.clearText, { color: theme.textMuted }]}>Clear</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Onboarding hint — disappears once cards are entered */}
@@ -194,6 +272,11 @@ export default function MainScreen() {
             {ONBOARDING_STEPS.map((step, i) => (
               <Text key={i} style={[styles.onboardingStep, { color: theme.textSecondary }]}>{step}</Text>
             ))}
+            <TouchableOpacity onPress={() => setShowTutorial(true)} style={styles.guideLink}>
+              <Ionicons name="book-outline" size={13} color={theme.primary} />
+              <Text style={[styles.guideLinkText, { color: theme.primary }]}>Full feature guide</Text>
+              <Ionicons name="chevron-forward" size={13} color={theme.primary} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -316,6 +399,7 @@ export default function MainScreen() {
         onSelect={handleCardSelect}
         onClose={() => setPickerTarget(null)}
       />
+      <TutorialModal visible={showTutorial} onClose={() => setShowTutorial(false)} />
     </SafeAreaView>
   );
 }
@@ -331,17 +415,26 @@ function Section({ label, children, theme }: { label: string; children: React.Re
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 16, paddingBottom: 40 },
+  scroll: { padding: 16, paddingTop: 24, paddingBottom: 40 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 20,
   },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerIcon: { width: 36, height: 36, borderRadius: 8 },
   title: { fontSize: 28, fontWeight: '800' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  helpBtn: { padding: 6, borderRadius: 8, borderWidth: 1 },
   clearBtn: {
     paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: 8, borderWidth: 1,
   },
   clearText: { fontSize: 14 },
+  guideLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    marginTop: 12, alignSelf: 'flex-start',
+  },
+  guideLinkText: { fontSize: 13, fontWeight: '600' },
   onboarding: {
     borderRadius: 12, borderWidth: 1,
     padding: 16, marginBottom: 16,

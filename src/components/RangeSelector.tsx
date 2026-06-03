@@ -10,6 +10,7 @@ interface Props {
   selected: string[];
   onChange?: (selected: string[]) => void;
   readOnly?: boolean;
+  containerPadding?: number;
 }
 
 const BROADWAY_RANKS = new Set(['A', 'K', 'Q', 'J', 'T']);
@@ -30,13 +31,13 @@ const CATEGORIES: { name: string; test: (l: string) => boolean }[] = [
   { name: '1-Gappers',   test: l => l.length > 2 && Math.abs(RANK_ORDER.indexOf(l[0]) - RANK_ORDER.indexOf(l[1])) === 2 },
 ];
 
-export default function RangeSelector({ selected, onChange, readOnly = false }: Props) {
+export default function RangeSelector({ selected, onChange, readOnly = false, containerPadding = 0 }: Props) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
 
   const LABEL_W = 18;
   const GAP = 1;
-  const gridWidth = width - 32 - LABEL_W - GAP * 12;
+  const gridWidth = width - 32 - containerPadding - LABEL_W - GAP * 12;
   const cellSize = Math.floor(gridWidth / 13);
 
   const selectedSet = new Set(selected);

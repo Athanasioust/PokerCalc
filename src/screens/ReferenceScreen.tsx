@@ -284,7 +284,7 @@ export default function ReferenceScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 16, paddingBottom: 40 },
+  scroll: { padding: 16, paddingTop: 24, paddingBottom: 40 },
   pageTitle: { fontSize: 28, fontWeight: '800', marginBottom: 24 },
   sectionTitle: {
     fontSize: 13, fontWeight: '600',
