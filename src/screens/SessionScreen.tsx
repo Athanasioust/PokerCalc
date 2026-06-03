@@ -84,7 +84,8 @@ export default function SessionScreen() {
   const s = makeStyles(theme);
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.scroll}>
+    <View style={s.container}>
+    <ScrollView style={s.flex} contentContainerStyle={s.scroll}>
 
       {/* Stats bar */}
       {completedSessions.length > 0 && (
@@ -184,16 +185,6 @@ export default function SessionScreen() {
             <Text style={s.endBtnText}>End Session</Text>
           </TouchableOpacity>
         </View>
-      )}
-
-      {/* Start session button */}
-      {!activeSession && (
-        <TouchableOpacity
-          style={[s.startBtn, { backgroundColor: theme.primary }]}
-          onPress={() => { setBuyInInput(''); setShowStartModal(true); }}
-        >
-          <Text style={s.startBtnText}>+ Start New Session</Text>
-        </TouchableOpacity>
       )}
 
       {/* Session history */}
@@ -301,13 +292,31 @@ export default function SessionScreen() {
       </Modal>
 
     </ScrollView>
+
+      {/* Fixed footer — Start Session button */}
+      {!activeSession && (
+        <View style={[s.footer, { backgroundColor: theme.bg, borderTopColor: theme.border }]}>
+          <TouchableOpacity
+            style={[s.startBtn, { backgroundColor: theme.primary }]}
+            onPress={() => { setBuyInInput(''); setShowStartModal(true); }}
+          >
+            <Text style={s.startBtnText}>+ Start New Session</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 }
 
 function makeStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.bg },
-    scroll: { padding: 16, paddingBottom: 40 },
+    flex: { flex: 1 },
+    scroll: { padding: 16, paddingBottom: 16 },
+    footer: {
+      padding: 16, paddingBottom: 24,
+      borderTopWidth: StyleSheet.hairlineWidth,
+    },
     statsBar: {
       flexDirection: 'row', backgroundColor: theme.bgCard,
       borderRadius: 12, borderWidth: 1, borderColor: theme.border,
