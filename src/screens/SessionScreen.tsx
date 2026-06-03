@@ -34,6 +34,15 @@ export default function SessionScreen() {
   }, 0);
   const hourlyRate = totalHours > 0 ? totalProfit / totalHours : null;
 
+  const profits = completedSessions.map(s => sessionProfit(s) ?? 0);
+  const winRate = profits.length > 0
+    ? Math.round(profits.filter(p => p > 0).length / profits.length * 100)
+    : null;
+  const bestSession = profits.length > 0 ? Math.max(...profits) : null;
+  const worstSession = profits.length > 0 ? Math.min(...profits) : null;
+  const maxAbs = profits.length > 0 ? Math.max(...profits.map(Math.abs)) : 1;
+  const CHART_H = 56;
+
   async function handleStart() {
     const amount = parseFloat(buyInInput);
     if (isNaN(amount) || amount <= 0) return;
@@ -79,26 +88,84 @@ export default function SessionScreen() {
 
       {/* Stats bar */}
       {completedSessions.length > 0 && (
-        <View style={s.statsBar}>
-          <View style={s.statItem}>
-            <Text style={s.statValue}>{completedSessions.length}</Text>
-            <Text style={s.statLabel}>Sessions</Text>
+        <>
+          <View style={s.statsBar}>
+            <View style={s.statItem}>
+              <Text style={s.statValue}>{completedSessions.length}</Text>
+              <Text style={s.statLabel}>Sessions</Text>
+            </View>
+            <View style={s.statDivider} />
+            <View style={s.statItem}>
+              <Text style={[s.statValue, { color: profitColor(totalProfit) }]}>
+                {totalProfit >= 0 ? '+' : ''}{totalProfit}
+              </Text>
+              <Text style={s.statLabel}>Total P&L</Text>
+            </View>
+            <View style={s.statDivider} />
+            <View style={s.statItem}>
+              <Text style={[s.statValue, hourlyRate !== null ? { color: profitColor(hourlyRate) } : {}]}>
+                {hourlyRate !== null ? `${hourlyRate >= 0 ? '+' : ''}${hourlyRate.toFixed(1)}/h` : '—'}
+              </Text>
+              <Text style={s.statLabel}>Hourly</Text>
+            </View>
+            <View style={s.statDivider} />
+            <View style={s.statItem}>
+              <Text style={[s.statValue, winRate !== null ? { color: winRate >= 50 ? '#4ade80' : '#f87171' } : {}]}>
+                {winRate !== null ? `${winRate}%` : '—'}
+              </Text>
+              <Text style={s.statLabel}>Win Rate</Text>
+            </View>
           </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statValue, { color: profitColor(totalProfit) }]}>
-              {totalProfit >= 0 ? '+' : ''}{totalProfit}
-            </Text>
-            <Text style={s.statLabel}>Total P&L</Text>
+
+          {/* Best / worst */}
+          <View style={s.bestWorstRow}>
+            <View style={[s.bestWorstCard, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
+              <Text style={[s.bestWorstLabel, { color: theme.textMuted }]}>Best Session</Text>
+              <Text style={[s.bestWorstValue, { color: '#4ade80' }]}>
+                {bestSession !== null ? `+${bestSession}` : '—'}
+              </Text>
+            </View>
+            <View style={[s.bestWorstCard, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
+              <Text style={[s.bestWorstLabel, { color: theme.textMuted }]}>Worst Session</Text>
+              <Text style={[s.bestWorstValue, { color: worstSession !== null && worstSession < 0 ? '#f87171' : '#4ade80' }]}>
+                {worstSession !== null ? (worstSession >= 0 ? `+${worstSession}` : `${worstSession}`) : '—'}
+              </Text>
+            </View>
           </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={[s.statValue, hourlyRate !== null ? { color: profitColor(hourlyRate) } : {}]}>
-              {hourlyRate !== null ? `${hourlyRate >= 0 ? '+' : ''}${hourlyRate.toFixed(1)}/h` : '—'}
-            </Text>
-            <Text style={s.statLabel}>Hourly</Text>
-          </View>
-        </View>
+
+          {/* Profit chart */}
+          {profits.length > 1 && (
+            <View style={[s.chartCard, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
+              <Text style={[s.chartTitle, { color: theme.textMuted }]}>Profit History</Text>
+              <View style={s.chartArea}>
+                {/* Zero line */}
+                <View style={[s.zeroLine, { backgroundColor: theme.border, top: CHART_H }]} />
+                <View style={s.bars}>
+                  {[...profits].reverse().map((p, i) => {
+                    const barH = maxAbs > 0 ? Math.max(3, Math.abs(p) / maxAbs * CHART_H) : 3;
+                    return (
+                      <View key={i} style={s.barWrap}>
+                        {p >= 0 ? (
+                          <>
+                            <View style={{ height: CHART_H - barH }} />
+                            <View style={[s.bar, { height: barH, backgroundColor: '#4ade80' }]} />
+                            <View style={{ height: CHART_H }} />
+                          </>
+                        ) : (
+                          <>
+                            <View style={{ height: CHART_H }} />
+                            <View style={[s.bar, { height: barH, backgroundColor: '#f87171' }]} />
+                            <View style={{ height: CHART_H - barH }} />
+                          </>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+          )}
+        </>
       )}
 
       {/* Active session */}
@@ -287,6 +354,23 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
     sessionDuration: { fontSize: 12, color: theme.textMuted },
     deleteBtn: { marginTop: 10, alignItems: 'flex-end' },
     deleteText: { fontSize: 12, color: '#ef4444' },
+    bestWorstRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+    bestWorstCard: {
+      flex: 1, borderRadius: 10, borderWidth: 1,
+      padding: 12, alignItems: 'center',
+    },
+    bestWorstLabel: { fontSize: 11, marginBottom: 4 },
+    bestWorstValue: { fontSize: 20, fontWeight: '800' },
+    chartCard: {
+      borderRadius: 12, borderWidth: 1,
+      padding: 14, marginBottom: 16,
+    },
+    chartTitle: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+    chartArea: { position: 'relative' },
+    zeroLine: { position: 'absolute', left: 0, right: 0, height: 1, zIndex: 1 },
+    bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
+    barWrap: { flex: 1, flexDirection: 'column' },
+    bar: { borderRadius: 3, minWidth: 4 },
     empty: { alignItems: 'center', marginTop: 60 },
     emptyIcon: { fontSize: 48, color: '#888', marginBottom: 12 },
     emptyTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },

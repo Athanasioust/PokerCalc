@@ -1,4 +1,4 @@
-import { Card, remainingDeck } from './deck';
+import { Card, remainingDeck, cardKey } from './deck';
 import { evaluateBestHand } from './handEvaluator';
 
 export interface EquityResult {
@@ -75,6 +75,67 @@ export function calculateEquity(
     villainWin: Math.round((villainWins / total) * 1000) / 10,
     tie: Math.round((ties / total) * 1000) / 10,
     totalBoards: total,
+  };
+}
+
+// Hero vs villain range (average equity across all valid combos in range)
+export function calculateRangeEquity(
+  heroHole: Card[],
+  villainRange: [Card, Card][],
+  board: Card[],
+): EquityResult {
+  if (villainRange.length === 0) return { heroWin: 0, villainWin: 0, tie: 0, totalBoards: 0 };
+
+  const heroSet = new Set(heroHole.map(cardKey));
+  const boardSet = new Set(board.map(cardKey));
+  const validBase = villainRange.filter(([a, b]) =>
+    !heroSet.has(cardKey(a)) && !heroSet.has(cardKey(b)) &&
+    !boardSet.has(cardKey(a)) && !boardSet.has(cardKey(b))
+  );
+
+  if (validBase.length === 0) return { heroWin: 0, villainWin: 0, tie: 0, totalBoards: 0 };
+
+  const remaining = remainingDeck([...heroHole, ...board]);
+  const boardsNeeded = 5 - board.length;
+
+  if (boardsNeeded === 0) {
+    const hv = handValue(heroHole, board);
+    let hw = 0, vw = 0, t = 0;
+    for (const [a, b] of validBase) {
+      const vv = handValue([a, b], board);
+      if (hv > vv) hw++; else if (vv > hv) vw++; else t++;
+    }
+    const n = validBase.length;
+    return {
+      heroWin: Math.round(hw / n * 1000) / 10,
+      villainWin: Math.round(vw / n * 1000) / 10,
+      tie: Math.round(t / n * 1000) / 10,
+      totalBoards: n,
+    };
+  }
+
+  const boardCombos = combinations(remaining, boardsNeeded);
+  let hw = 0, vw = 0, t = 0, total = 0;
+
+  for (const extra of boardCombos) {
+    const runoutSet = new Set(extra.map(cardKey));
+    const fullBoard = [...board, ...extra];
+    const valid = validBase.filter(([a, b]) => !runoutSet.has(cardKey(a)) && !runoutSet.has(cardKey(b)));
+    if (valid.length === 0) continue;
+    const hv = handValue(heroHole, fullBoard);
+    for (const [a, b] of valid) {
+      const vv = handValue([a, b], fullBoard);
+      if (hv > vv) hw++; else if (vv > hv) vw++; else t++;
+      total++;
+    }
+  }
+
+  if (total === 0) return { heroWin: 0, villainWin: 0, tie: 0, totalBoards: 0 };
+  return {
+    heroWin: Math.round(hw / total * 1000) / 10,
+    villainWin: Math.round(vw / total * 1000) / 10,
+    tie: Math.round(t / total * 1000) / 10,
+    totalBoards: boardCombos.length,
   };
 }
 

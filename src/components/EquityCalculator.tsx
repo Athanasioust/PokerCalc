@@ -3,8 +3,14 @@ import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'rea
 import * as Haptics from 'expo-haptics';
 import CardSlot from './CardSlot';
 import CardPicker from './CardPicker';
+import RangeSelector from './RangeSelector';
 import { Card, cardKey } from '../logic/deck';
-import { calculateEquity, calculateMultiEquity, EquityResult, MultiEquityResult } from '../logic/equity';
+import {
+  calculateEquity, calculateMultiEquity,
+  calculateRangeEquity,
+  EquityResult, MultiEquityResult,
+} from '../logic/equity';
+import { rangeToCombos } from '../logic/ranges';
 import { useTheme } from '../ThemeContext';
 
 interface Props {
@@ -14,12 +20,15 @@ interface Props {
 }
 
 type VillainSlot = (Card | null)[];
+type VillainMode = 'cards' | 'range';
 
 const MAX_VILLAINS = 3;
 
 export default function EquityCalculator({ heroHole, board, allKnownCards }: Props) {
   const theme = useTheme();
   const [villains, setVillains] = useState<VillainSlot[]>([[null, null]]);
+  const [villainModes, setVillainModes] = useState<VillainMode[]>(['cards']);
+  const [villainRanges, setVillainRanges] = useState<string[][]>([[]]);
   const [pickerVillain, setPickerVillain] = useState<{ vi: number; ci: number } | null>(null);
   const [result, setResult] = useState<EquityResult | MultiEquityResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,15 +36,17 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
 
   const heroFull = heroHole.length >= 2;
   const hasFlop = board.length >= 3;
-  const allVillainsFull = villains.every(v => v.every(Boolean));
-  const canCalc = heroFull && hasFlop && allVillainsFull;
+  const singleVillain = villains.length === 1;
 
-  const pickerUsedCards: Card[] = [
-    ...allKnownCards,
-    ...villains.flat().filter(Boolean) as Card[],
-    // exclude the card currently in the slot being edited
-    ...(pickerVillain ? [] : []),
-  ].filter((c, _, arr) => {
+  function villainReady(vi: number): boolean {
+    if (villainModes[vi] === 'range') return villainRanges[vi].length > 0;
+    return villains[vi].every(Boolean);
+  }
+  const allVillainsReady = villains.every((_, vi) => villainReady(vi));
+  const canCalc = heroFull && hasFlop && allVillainsReady;
+  const anyRangeMode = villainModes.some(m => m === 'range');
+
+  const pickerUsedCards: Card[] = [...allKnownCards, ...villains.flat().filter(Boolean) as Card[]].filter((c, _, arr) => {
     if (!pickerVillain) return true;
     const editing = villains[pickerVillain.vi][pickerVillain.ci];
     if (!editing) return true;
@@ -48,15 +59,24 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
     setLoading(true);
     setTimeout(() => {
       if (calcKey.current !== key) return;
-      const fullVillains = villains.map(v => v.filter(Boolean) as Card[]);
-      const res = fullVillains.length === 1
-        ? calculateEquity(heroHole, fullVillains[0], board)
-        : calculateMultiEquity(heroHole, fullVillains, board);
+
+      let res: EquityResult | MultiEquityResult;
+
+      if (singleVillain && villainModes[0] === 'range') {
+        const combos = rangeToCombos(villainRanges[0], [...heroHole, ...board]);
+        res = calculateRangeEquity(heroHole, combos, board);
+      } else {
+        const fullVillains = villains.map(v => v.filter(Boolean) as Card[]);
+        res = fullVillains.length === 1
+          ? calculateEquity(heroHole, fullVillains[0], board)
+          : calculateMultiEquity(heroHole, fullVillains, board);
+      }
+
       if (calcKey.current !== key) return;
       setResult(res);
       setLoading(false);
     }, 0);
-  }, [canCalc, JSON.stringify(villains), JSON.stringify(heroHole), JSON.stringify(board)]);
+  }, [canCalc, JSON.stringify(villainModes), JSON.stringify(villainRanges), JSON.stringify(villains), JSON.stringify(heroHole), JSON.stringify(board)]);
 
   function handleSlotPress(vi: number, ci: number) {
     if (villains[vi][ci]) {
@@ -71,9 +91,7 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
   function handleCardSelect(card: Card) {
     if (!pickerVillain) return;
     const { vi, ci } = pickerVillain;
-    const updated = villains.map((v, i) =>
-      i === vi ? v.map((c, j) => j === ci ? card : c) : v
-    );
+    const updated = villains.map((v, i) => i === vi ? v.map((c, j) => j === ci ? card : c) : v);
     setVillains(updated);
     setPickerVillain(null);
   }
@@ -82,6 +100,8 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
     if (villains.length >= MAX_VILLAINS) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setVillains([...villains, [null, null]]);
+    setVillainModes([...villainModes, 'cards']);
+    setVillainRanges([...villainRanges, []]);
     setResult(null);
   }
 
@@ -89,6 +109,21 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
     if (villains.length <= 1) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setVillains(villains.filter((_, i) => i !== vi));
+    setVillainModes(villainModes.filter((_, i) => i !== vi));
+    setVillainRanges(villainRanges.filter((_, i) => i !== vi));
+    setResult(null);
+  }
+
+  function toggleMode(vi: number) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const updated = villainModes.map((m, i) => i === vi ? (m === 'cards' ? 'range' : 'cards') : m);
+    setVillainModes(updated);
+    setResult(null);
+  }
+
+  function updateRange(vi: number, range: string[]) {
+    const updated = villainRanges.map((r, i) => i === vi ? range : r);
+    setVillainRanges(updated);
     setResult(null);
   }
 
@@ -105,37 +140,62 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
         <Text style={[styles.title, { color: theme.textMuted }]}>
           Equity vs {villains.length === 1 ? 'Villain' : `${villains.length} Villains`}
         </Text>
-        {villains.length < MAX_VILLAINS && (
+        {villains.length < MAX_VILLAINS && !anyRangeMode && (
           <TouchableOpacity onPress={addVillain} style={[styles.addBtn, { borderColor: theme.primary }]}>
             <Text style={[styles.addBtnText, { color: theme.primary }]}>+ Add Villain</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {villains.map((villain, vi) => (
-        <View key={vi} style={styles.villainRow}>
-          <View style={styles.villainLabel}>
-            <Text style={[styles.villainName, { color: theme.textSecondary }]}>
-              Villain {villains.length > 1 ? vi + 1 : ''}
-            </Text>
-            {villains.length > 1 && (
-              <TouchableOpacity onPress={() => removeVillain(vi)}>
-                <Text style={[styles.removeText, { color: theme.textMuted }]}>Remove</Text>
-              </TouchableOpacity>
+      {villains.map((villain, vi) => {
+        const mode = villainModes[vi];
+        return (
+          <View key={vi} style={styles.villainBlock}>
+            {/* Villain header */}
+            <View style={styles.villainHeader}>
+              <Text style={[styles.villainName, { color: theme.textSecondary }]}>
+                {villains.length > 1 ? `Villain ${vi + 1}` : 'Villain'}
+              </Text>
+              <View style={styles.villainActions}>
+                {/* Mode toggle (only for single villain) */}
+                {singleVillain && (
+                  <TouchableOpacity
+                    onPress={() => toggleMode(vi)}
+                    style={[styles.modeToggle, { borderColor: theme.primary, backgroundColor: mode === 'range' ? theme.primary : 'transparent' }]}
+                  >
+                    <Text style={[styles.modeToggleText, { color: mode === 'range' ? '#fff' : theme.primary }]}>
+                      {mode === 'range' ? 'Range' : 'Cards'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {villains.length > 1 && (
+                  <TouchableOpacity onPress={() => removeVillain(vi)}>
+                    <Text style={[styles.removeText, { color: theme.textMuted }]}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {mode === 'cards' ? (
+              <View style={styles.cardRow}>
+                {[0, 1].map(ci => (
+                  <CardSlot
+                    key={ci}
+                    card={villain[ci]}
+                    onPress={() => handleSlotPress(vi, ci)}
+                    onRemove={() => handleSlotPress(vi, ci)}
+                  />
+                ))}
+              </View>
+            ) : (
+              <RangeSelector
+                selected={villainRanges[vi]}
+                onChange={(r) => updateRange(vi, r)}
+              />
             )}
           </View>
-          <View style={styles.cardRow}>
-            {[0, 1].map(ci => (
-              <CardSlot
-                key={ci}
-                card={villain[ci]}
-                onPress={() => handleSlotPress(vi, ci)}
-                onRemove={() => handleSlotPress(vi, ci)}
-              />
-            ))}
-          </View>
-        </View>
-      ))}
+        );
+      })}
 
       {loading && (
         <View style={styles.loadingRow}>
@@ -144,7 +204,7 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
         </View>
       )}
 
-      {!loading && result && (
+      {!loading && result && result.totalBoards > 0 && (
         <View style={styles.results}>
           <View style={styles.bar}>
             <View style={[styles.heroBar, { flex: heroWin || 0.01 }]} />
@@ -170,7 +230,10 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
             </View>
           </View>
           <Text style={[styles.boardCount, { color: theme.textMuted }]}>
-            {result.totalBoards.toLocaleString()} boards · {isMulti ? `${villains.length + 1}-way` : 'heads-up'}
+            {result.totalBoards.toLocaleString()} boards ·{' '}
+            {villainModes[0] === 'range'
+              ? `vs ${villainRanges[0].length}-hand range`
+              : isMulti ? `${villains.length + 1}-way` : 'heads-up'}
           </Text>
         </View>
       )}
@@ -178,7 +241,7 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
       {!heroFull && (
         <Text style={[styles.hint, { color: theme.textMuted }]}>Enter your hole cards first</Text>
       )}
-      {heroFull && allVillainsFull && !hasFlop && (
+      {heroFull && allVillainsReady && !hasFlop && (
         <Text style={[styles.hint, { color: theme.textMuted }]}>Enter the flop to calculate equity</Text>
       )}
 
@@ -198,9 +261,12 @@ const styles = StyleSheet.create({
   title: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   addBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1.5 },
   addBtnText: { fontSize: 12, fontWeight: '700' },
-  villainRow: { marginBottom: 10 },
-  villainLabel: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  villainBlock: { marginBottom: 12 },
+  villainHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   villainName: { fontSize: 13, fontWeight: '500' },
+  villainActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  modeToggle: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, borderWidth: 1.5 },
+  modeToggleText: { fontSize: 11, fontWeight: '700' },
   removeText: { fontSize: 12 },
   cardRow: { flexDirection: 'row' },
   loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, gap: 8 },
