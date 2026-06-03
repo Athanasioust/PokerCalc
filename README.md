@@ -58,13 +58,7 @@ The latest APK can be built via [EAS Build](https://expo.dev/eas). See **Running
 
 ## Screenshots
 
-
-<img width="1220" height="2712" alt="Screenshot_2026-06-03-16-44-58-803_host exp exponent" src="https://github.com/user-attachments/assets/6e27537c-5783-4c90-9722-541d1c2ed4f6" />
-<img width="1220" height="2712" alt="Screenshot_2026-06-03-16-43-58-269_host exp exponent" src="https://github.com/user-attachments/assets/d9dc185e-7645-4301-af6e-01af73a64a27" />
-<img width="1220" height="2712" alt="Screenshot_2026-06-03-16-43-52-682_host exp exponent" src="https://github.com/user-attachments/assets/b23a4c9c-34a8-401a-9ee9-523e1eda1397" />
-<img width="1220" height="2712" alt="Screenshot_2026-06-03-16-48-18-525_host exp exponent" src="https://github.com/user-attachments/assets/481438e8-8b11-49d7-b8a5-1a1e0e7f693a" />
-<img width="1220" height="2712" alt="Screenshot_2026-06-03-16-42-52-088_host exp exponent" src="https://github.com/user-attachments/assets/596a424d-9eb8-4293-888d-14a32502f545" />
-
+SOON
 
 ---
 
