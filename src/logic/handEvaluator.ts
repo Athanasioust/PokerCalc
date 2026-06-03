@@ -117,3 +117,88 @@ export function handRankValue(holeCards: Card[], board: Card[]): number {
   const rank = evaluateBestHand(holeCards, board);
   return rank ? HAND_RANK_VALUE[rank] : -1;
 }
+
+// Returns the high card of a straight (0 if no straight).
+// A-2-3-4-5 returns 5 (five-high). A-K-Q-J-T returns 14.
+function straight5High(ranks: number[]): number {
+  const unique = [...new Set(ranks)].sort((a, b) => b - a);
+  if (unique.includes(14)) unique.push(1); // ace can play low
+  for (let i = 0; i <= unique.length - 5; i++) {
+    if (
+      unique[i] - unique[i + 4] === 4 &&
+      new Set(unique.slice(i, i + 5)).size === 5
+    ) return unique[i];
+  }
+  return 0;
+}
+
+// Encode up to 6 numbers into a single comparable integer (base-15).
+// Category (0-9) in the most significant position; ranks in the rest.
+function encode6(a: number, b: number, c: number, d: number, e: number, f: number): number {
+  return ((((a * 15 + b) * 15 + c) * 15 + d) * 15 + e) * 15 + f;
+}
+
+// Score a 5-card hand — higher = better, accounts for rank within category.
+function evaluate5Score(cards: Card[]): number {
+  const rc = rankCounts(cards);
+  const entries = [...rc.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+  const ranks = cards.map(c => c.rank as number).sort((a, b) => b - a);
+  const flushSuit = isFlush(cards);
+
+  if (flushSuit) {
+    const fr = cards
+      .filter(c => c.suit === flushSuit)
+      .map(c => c.rank as number)
+      .sort((a, b) => b - a);
+    const sfHigh = straight5High(fr);
+    if (sfHigh > 0) {
+      return sfHigh === 14
+        ? encode6(9, 14, 0, 0, 0, 0)        // royal flush
+        : encode6(8, sfHigh, 0, 0, 0, 0);   // straight flush
+    }
+    return encode6(5, fr[0], fr[1], fr[2], fr[3], fr[4]); // flush
+  }
+
+  const [p1, p2] = entries;
+  const sh = straight5High(ranks);
+
+  if (p1[1] === 4) {
+    const kicker = entries.find(e => e[1] < 4)?.[0] ?? 0;
+    return encode6(7, p1[0], kicker, 0, 0, 0);
+  }
+  if (p1[1] === 3 && p2?.[1] === 2) {
+    return encode6(6, p1[0], p2[0], 0, 0, 0);
+  }
+  if (sh > 0) {
+    return encode6(4, sh, 0, 0, 0, 0);
+  }
+  if (p1[1] === 3) {
+    const ks = entries.filter(e => e[1] < 3).map(e => e[0]).sort((a, b) => b - a);
+    return encode6(3, p1[0], ks[0] ?? 0, ks[1] ?? 0, 0, 0);
+  }
+  if (p1[1] === 2 && p2?.[1] === 2) {
+    const hi = p1[0] > p2[0] ? p1[0] : p2[0];
+    const lo = p1[0] > p2[0] ? p2[0] : p1[0];
+    const kicker = entries.find(e => e[1] === 1)?.[0] ?? 0;
+    return encode6(2, hi, lo, kicker, 0, 0);
+  }
+  if (p1[1] === 2) {
+    const ks = entries.filter(e => e[1] === 1).map(e => e[0]).sort((a, b) => b - a);
+    return encode6(1, p1[0], ks[0] ?? 0, ks[1] ?? 0, ks[2] ?? 0, 0);
+  }
+  return encode6(0, ranks[0], ranks[1], ranks[2], ranks[3], ranks[4]);
+}
+
+// Full hand score — best 5 cards from hole + board, comparable across all hand types and ranks.
+export function evaluateHandScore(holeCards: Card[], board: Card[]): number {
+  const all = [...holeCards, ...board];
+  if (all.length < 2) return -1;
+  if (all.length <= 5) return evaluate5Score(all);
+  const combos = combinations(all, 5);
+  let best = -1;
+  for (const combo of combos) {
+    const s = evaluate5Score(combo);
+    if (s > best) best = s;
+  }
+  return best;
+}
