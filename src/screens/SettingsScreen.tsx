@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, useThemeMode } from '../ThemeContext';
 import { ThemeMode } from '../theme';
 import { clearHistory } from '../logic/history';
+import { useSettings, OddsFormat } from '../SettingsContext';
 
 const APP_VERSION = '1.0.0';
 
@@ -26,6 +27,7 @@ export const loadDefaultVariant = async (): Promise<'holdem' | 'omaha'> => {
 export default function SettingsScreen() {
   const theme = useTheme();
   const { mode, setMode } = useThemeMode();
+  const { advancedMode, oddsFormat, setAdvancedMode, setOddsFormat } = useSettings();
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [defaultVariant, setDefaultVariant] = useState<'holdem' | 'omaha'>('holdem');
 
@@ -96,10 +98,41 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Calculator */}
+        <Text style={s.sectionTitle}>Calculator</Text>
+        <View style={s.row}>
+          <View style={s.rowTextWrap}>
+            <Text style={s.rowLabel}>Advanced Mode</Text>
+            <Text style={s.rowSub}>Range input and hand distribution breakdown</Text>
+          </View>
+          <Switch
+            value={advancedMode}
+            onValueChange={setAdvancedMode}
+            trackColor={{ false: theme.border, true: theme.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+        <View style={[s.group, { marginTop: 12 }]}>
+          <Text style={s.groupLabel}>Odds Display Format</Text>
+          <View style={s.segmented}>
+            {(['%', 'X:1'] as OddsFormat[]).map(f => (
+              <TouchableOpacity
+                key={f}
+                style={[s.segment, oddsFormat === f && s.segmentActive]}
+                onPress={() => setOddsFormat(f)}
+              >
+                <Text style={[s.segmentText, oddsFormat === f && s.segmentTextActive]}>
+                  {f === '%' ? '% Percentage' : 'X:1 Ratio'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Feedback */}
         <Text style={s.sectionTitle}>Feedback</Text>
         <View style={s.row}>
-          <View>
+          <View style={s.rowTextWrap}>
             <Text style={s.rowLabel}>Haptic Feedback</Text>
             <Text style={s.rowSub}>Vibrate on card taps and selections</Text>
           </View>
@@ -182,6 +215,7 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
       padding: 14, flexDirection: 'row',
       justifyContent: 'space-between', alignItems: 'center',
     },
+    rowTextWrap: { flex: 1, marginRight: 12 },
     rowLabel: { fontSize: 15, fontWeight: '600', color: theme.text },
     rowSub: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
     dangerRow: {

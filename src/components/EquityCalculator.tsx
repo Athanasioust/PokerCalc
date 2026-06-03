@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import CardSlot from './CardSlot';
 import CardPicker from './CardPicker';
 import RangeSelector from './RangeSelector';
-import { Card, cardKey } from '../logic/deck';
+import { Card } from '../logic/deck';
 import {
   calculateEquity, calculateMultiEquity,
   calculateRangeEquity,
@@ -12,6 +12,7 @@ import {
 } from '../logic/equity';
 import { rangeToCombos } from '../logic/ranges';
 import { useTheme } from '../ThemeContext';
+import { useSettings } from '../SettingsContext';
 
 interface Props {
   heroHole: Card[];
@@ -24,8 +25,27 @@ type VillainMode = 'cards' | 'range';
 
 const MAX_VILLAINS = 3;
 
+const HAND_DISPLAY_ORDER = [
+  'royal_flush', 'straight_flush', 'quads', 'full_house',
+  'flush', 'straight', 'trips', 'two_pair', 'one_pair', 'high_card',
+];
+
+const HAND_LABELS: Record<string, string> = {
+  royal_flush: 'Royal',
+  straight_flush: 'Str. Flush',
+  quads: 'Quads',
+  full_house: 'Full House',
+  flush: 'Flush',
+  straight: 'Straight',
+  trips: 'Trips',
+  two_pair: 'Two Pair',
+  one_pair: 'One Pair',
+  high_card: 'High Card',
+};
+
 export default function EquityCalculator({ heroHole, board, allKnownCards }: Props) {
   const theme = useTheme();
+  const { advancedMode, oddsFormat } = useSettings();
   const [villains, setVillains] = useState<VillainSlot[]>([[null, null]]);
   const [villainModes, setVillainModes] = useState<VillainMode[]>(['cards']);
   const [villainRanges, setVillainRanges] = useState<string[][]>([[]]);
@@ -37,6 +57,14 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
   const heroFull = heroHole.length >= 2;
   const hasFlop = board.length >= 3;
   const singleVillain = villains.length === 1;
+
+  // When advanced mode is disabled, reset range modes to cards
+  useEffect(() => {
+    if (!advancedMode) {
+      setVillainModes(villainModes.map(() => 'cards'));
+      setResult(null);
+    }
+  }, [advancedMode]);
 
   function villainReady(vi: number): boolean {
     if (villainModes[vi] === 'range') return villainRanges[vi].length > 0;
@@ -127,12 +155,25 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
     setResult(null);
   }
 
+  function fmtOdds(pct: number): string {
+    if (oddsFormat === '%') return `${pct}%`;
+    const denom = 100 - pct;
+    if (denom <= 0) return '∞:1';
+    if (pct <= 0) return '0:1';
+    return `${(pct / denom).toFixed(1)}:1`;
+  }
+
   const isMulti = villains.length > 1;
   const heroWin = result ? result.heroWin : 0;
   const tie = result ? result.tie : 0;
   const loss = result
     ? ('villainWin' in result ? result.villainWin : result.loss)
     : 0;
+
+  const heroDistribution = result && 'heroDistribution' in result ? result.heroDistribution : undefined;
+  const distEntries = heroDistribution
+    ? HAND_DISPLAY_ORDER.filter(k => (heroDistribution[k] || 0) > 0)
+    : [];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
@@ -151,14 +192,12 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
         const mode = villainModes[vi];
         return (
           <View key={vi} style={styles.villainBlock}>
-            {/* Villain header */}
             <View style={styles.villainHeader}>
               <Text style={[styles.villainName, { color: theme.textSecondary }]}>
                 {villains.length > 1 ? `Villain ${vi + 1}` : 'Villain'}
               </Text>
               <View style={styles.villainActions}>
-                {/* Mode toggle (only for single villain) */}
-                {singleVillain && (
+                {advancedMode && singleVillain && (
                   <TouchableOpacity
                     onPress={() => toggleMode(vi)}
                     style={[styles.modeToggle, { borderColor: theme.primary, backgroundColor: mode === 'range' ? theme.primary : 'transparent' }]}
@@ -206,15 +245,18 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
 
       {!loading && result && result.totalBoards > 0 && (
         <View style={styles.results}>
+          {/* Equity bar */}
           <View style={styles.bar}>
             <View style={[styles.heroBar, { flex: heroWin || 0.01 }]} />
             <View style={[styles.tieBar, { flex: tie || 0.01 }]} />
             <View style={[styles.lossBar, { flex: loss || 0.01 }]} />
           </View>
+
+          {/* Equity labels */}
           <View style={styles.labels}>
             <View style={styles.labelGroup}>
               <Text style={[styles.labelName, { color: theme.textMuted }]}>You</Text>
-              <Text style={[styles.labelPct, { color: '#4ade80' }]}>{heroWin}%</Text>
+              <Text style={[styles.labelPct, { color: '#4ade80' }]}>{fmtOdds(heroWin)}</Text>
             </View>
             {tie > 0 && (
               <View style={styles.labelGroup}>
@@ -226,15 +268,31 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
               <Text style={[styles.labelName, { color: theme.textMuted }]}>
                 {isMulti ? 'Villains' : 'Villain'}
               </Text>
-              <Text style={[styles.labelPct, { color: '#f87171' }]}>{loss}%</Text>
+              <Text style={[styles.labelPct, { color: '#f87171' }]}>{fmtOdds(loss)}</Text>
             </View>
           </View>
+
           <Text style={[styles.boardCount, { color: theme.textMuted }]}>
             {result.totalBoards.toLocaleString()} boards ·{' '}
             {villainModes[0] === 'range'
               ? `vs ${villainRanges[0].length}-hand range`
               : isMulti ? `${villains.length + 1}-way` : 'heads-up'}
           </Text>
+
+          {/* Hand distribution (advanced mode only) */}
+          {advancedMode && distEntries.length > 0 && (
+            <View style={[styles.distSection, { borderTopColor: theme.border }]}>
+              <Text style={[styles.distTitle, { color: theme.textMuted }]}>Your Hand Distribution</Text>
+              <View style={styles.distGrid}>
+                {distEntries.map(k => (
+                  <View key={k} style={[styles.distChip, { backgroundColor: theme.bgMuted }]}>
+                    <Text style={[styles.distLabel, { color: theme.textMuted }]}>{HAND_LABELS[k]}</Text>
+                    <Text style={[styles.distPct, { color: theme.textSecondary }]}>{heroDistribution![k]}%</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -281,5 +339,11 @@ const styles = StyleSheet.create({
   labelName: { fontSize: 12 },
   labelPct: { fontSize: 18, fontWeight: '700' },
   boardCount: { fontSize: 11, textAlign: 'center', marginTop: 6 },
+  distSection: { marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
+  distTitle: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  distGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  distChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  distLabel: { fontSize: 11 },
+  distPct: { fontSize: 11, fontWeight: '700' },
   hint: { fontSize: 13, fontStyle: 'italic', marginTop: 8 },
 });

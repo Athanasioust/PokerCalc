@@ -12,6 +12,24 @@ interface Props {
   readOnly?: boolean;
 }
 
+const BROADWAY_RANKS = new Set(['A', 'K', 'Q', 'J', 'T']);
+const RANK_ORDER = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+
+const ALL_LABELS: string[] = [];
+for (let r = 0; r < 13; r++)
+  for (let c = 0; c < 13; c++)
+    ALL_LABELS.push(cellLabel(r, c));
+
+const CATEGORIES: { name: string; test: (l: string) => boolean }[] = [
+  { name: 'Pairs',       test: l => l.length === 2 },
+  { name: 'Broadway',    test: l => l.length > 2 && BROADWAY_RANKS.has(l[0]) && BROADWAY_RANKS.has(l[1]) },
+  { name: 'Suited',      test: l => l.endsWith('s') },
+  { name: 'Offsuit',     test: l => l.endsWith('o') },
+  { name: 'Connectors',  test: l => l.length > 2 && Math.abs(RANK_ORDER.indexOf(l[0]) - RANK_ORDER.indexOf(l[1])) === 1 },
+  { name: 'Suited SC',   test: l => l.endsWith('s') && Math.abs(RANK_ORDER.indexOf(l[0]) - RANK_ORDER.indexOf(l[1])) === 1 },
+  { name: '1-Gappers',   test: l => l.length > 2 && Math.abs(RANK_ORDER.indexOf(l[0]) - RANK_ORDER.indexOf(l[1])) === 2 },
+];
+
 export default function RangeSelector({ selected, onChange, readOnly = false }: Props) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -37,6 +55,19 @@ export default function RangeSelector({ selected, onChange, readOnly = false }: 
     onChange(hands);
   }
 
+  function toggleCategory(test: (l: string) => boolean) {
+    if (readOnly || !onChange) return;
+    const catHands = ALL_LABELS.filter(test);
+    const catSet = new Set(catHands);
+    const allSelected = catHands.every(h => selectedSet.has(h));
+    if (allSelected) {
+      onChange(selected.filter(h => !catSet.has(h)));
+    } else {
+      const toAdd = catHands.filter(h => !selectedSet.has(h));
+      onChange([...selected, ...toAdd]);
+    }
+  }
+
   const comboCount = selected.reduce((sum, l) => sum + combosForLabel(l), 0);
   const pct = Math.round(comboCount / 1326 * 100);
 
@@ -54,6 +85,7 @@ export default function RangeSelector({ selected, onChange, readOnly = false }: 
     <View>
       {!readOnly && (
         <>
+          <Text style={[styles.catHeader, { color: theme.textMuted }]}>Presets</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetRow} contentContainerStyle={styles.presetContent}>
             <TouchableOpacity onPress={() => onChange && onChange([])} style={[styles.preset, { borderColor: theme.border }]}>
               <Text style={[styles.presetText, { color: theme.textMuted }]}>Clear</Text>
@@ -64,6 +96,29 @@ export default function RangeSelector({ selected, onChange, readOnly = false }: 
               </TouchableOpacity>
             ))}
           </ScrollView>
+
+          <Text style={[styles.catHeader, { color: theme.textMuted }]}>Quick-Select</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetRow} contentContainerStyle={styles.presetContent}>
+            {CATEGORIES.map(cat => {
+              const catHands = ALL_LABELS.filter(cat.test);
+              const active = catHands.length > 0 && catHands.every(h => selectedSet.has(h));
+              return (
+                <TouchableOpacity
+                  key={cat.name}
+                  onPress={() => toggleCategory(cat.test)}
+                  style={[styles.preset, {
+                    borderColor: active ? theme.primary : theme.border,
+                    backgroundColor: active ? (theme.isDark ? '#2a2a4e' : '#e8eaf6') : 'transparent',
+                  }]}
+                >
+                  <Text style={[styles.presetText, { color: active ? theme.primary : theme.textMuted }]}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
           <Text style={[styles.comboCount, { color: theme.textMuted }]}>
             {selected.length} hands · {comboCount} combos · {pct}% of range
           </Text>
@@ -112,7 +167,8 @@ export default function RangeSelector({ selected, onChange, readOnly = false }: 
 }
 
 const styles = StyleSheet.create({
-  presetRow: { marginBottom: 8 },
+  catHeader: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  presetRow: { marginBottom: 6 },
   presetContent: { paddingRight: 8, gap: 6, flexDirection: 'row' },
   preset: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   presetText: { fontSize: 11, fontWeight: '600' },
