@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useKeepAwake } from 'expo-keep-awake';
 import CardSlot from '../components/CardSlot';
 import CardPicker from '../components/CardPicker';
 import DrawSelector from '../components/DrawSelector';
@@ -36,6 +37,7 @@ const ONBOARDING_STEPS = [
 ];
 
 export default function MainScreen() {
+  useKeepAwake();
   const theme = useTheme();
   const [variant, setVariant] = useState<Variant>('holdem');
   const [holeCards, setHoleCards] = useState<(Card | null)[]>([null, null]);
