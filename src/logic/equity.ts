@@ -1,5 +1,22 @@
 import { Card, remainingDeck, cardKey } from './deck';
-import { evaluateBestHand, evaluateHandScore } from './handEvaluator';
+import {
+  evaluateBestHand, evaluateHandScore,
+  evaluateBestHandOmaha, evaluateHandScoreOmaha,
+} from './handEvaluator';
+
+type Variant = 'holdem' | 'omaha';
+
+function scoreHand(hole: Card[], board: Card[], variant: Variant): number {
+  return variant === 'omaha'
+    ? evaluateHandScoreOmaha(hole, board)
+    : evaluateHandScore(hole, board);
+}
+
+function rankHand(hole: Card[], board: Card[], variant: Variant) {
+  return variant === 'omaha'
+    ? evaluateBestHandOmaha(hole, board)
+    : evaluateBestHand(hole, board);
+}
 
 export interface HandDistribution {
   [handType: string]: number; // percentage 0.0–100.0
@@ -43,15 +60,16 @@ export function calculateEquity(
   heroHole: Card[],
   villainHole: Card[],
   board: Card[],
+  variant: Variant = 'holdem',
 ): EquityResult {
   const knownCards = [...heroHole, ...villainHole, ...board];
   const remaining = remainingDeck(knownCards);
   const boardsNeeded = 5 - board.length;
 
   if (boardsNeeded === 0) {
-    const hv = evaluateHandScore(heroHole, board);
-    const vv = evaluateHandScore(villainHole, board);
-    const heroRank = evaluateBestHand(heroHole, board);
+    const hv = scoreHand(heroHole, board, variant);
+    const vv = scoreHand(villainHole, board, variant);
+    const heroRank = rankHand(heroHole, board, variant);
     return {
       heroWin: hv > vv ? 100 : 0,
       villainWin: vv > hv ? 100 : 0,
@@ -67,12 +85,12 @@ export function calculateEquity(
 
   for (const extra of boardCombos) {
     const fullBoard = [...board, ...extra];
-    const hv = evaluateHandScore(heroHole, fullBoard);
-    const vv = evaluateHandScore(villainHole, fullBoard);
+    const hv = scoreHand(heroHole, fullBoard, variant);
+    const vv = scoreHand(villainHole, fullBoard, variant);
     if (hv > vv) heroWins++;
     else if (vv > hv) villainWins++;
     else ties++;
-    const heroRank = evaluateBestHand(heroHole, fullBoard);
+    const heroRank = rankHand(heroHole, fullBoard, variant);
     if (heroRank) heroCounts[heroRank] = (heroCounts[heroRank] || 0) + 1;
   }
 
@@ -91,6 +109,7 @@ export function calculateRangeEquity(
   heroHole: Card[],
   villainRange: [Card, Card][],
   board: Card[],
+  variant: Variant = 'holdem',
 ): EquityResult {
   if (villainRange.length === 0) return { heroWin: 0, villainWin: 0, tie: 0, totalBoards: 0 };
 
@@ -107,11 +126,11 @@ export function calculateRangeEquity(
   const boardsNeeded = 5 - board.length;
 
   if (boardsNeeded === 0) {
-    const hv = evaluateHandScore(heroHole, board);
-    const heroRank = evaluateBestHand(heroHole, board);
+    const hv = scoreHand(heroHole, board, variant);
+    const heroRank = rankHand(heroHole, board, variant);
     let hw = 0, vw = 0, t = 0;
     for (const [a, b] of validBase) {
-      const vv = evaluateHandScore([a, b], board);
+      const vv = scoreHand([a, b], board, variant);
       if (hv > vv) hw++; else if (vv > hv) vw++; else t++;
     }
     const n = validBase.length;
@@ -135,11 +154,11 @@ export function calculateRangeEquity(
     const valid = validBase.filter(([a, b]) => !runoutSet.has(cardKey(a)) && !runoutSet.has(cardKey(b)));
     if (valid.length === 0) continue;
     validBoardCount++;
-    const heroRank = evaluateBestHand(heroHole, fullBoard);
+    const heroRank = rankHand(heroHole, fullBoard, variant);
     if (heroRank) heroCounts[heroRank] = (heroCounts[heroRank] || 0) + 1;
-    const hv = evaluateHandScore(heroHole, fullBoard);
+    const hv = scoreHand(heroHole, fullBoard, variant);
     for (const [a, b] of valid) {
-      const vv = evaluateHandScore([a, b], fullBoard);
+      const vv = scoreHand([a, b], fullBoard, variant);
       if (hv > vv) hw++; else if (vv > hv) vw++; else t++;
       total++;
     }
@@ -160,6 +179,7 @@ export function calculateMultiEquity(
   heroHole: Card[],
   villainHands: Card[][],
   board: Card[],
+  variant: Variant = 'holdem',
 ): MultiEquityResult {
   const knownCards = [...heroHole, ...villainHands.flat(), ...board];
   const remaining = remainingDeck(knownCards);
@@ -168,7 +188,7 @@ export function calculateMultiEquity(
   const allHands = [heroHole, ...villainHands];
 
   function resolveBoard(fullBoard: Card[]): 'hero' | 'villain' | 'tie' {
-    const values = allHands.map(h => evaluateHandScore(h, fullBoard));
+    const values = allHands.map(h => scoreHand(h, fullBoard, variant));
     const best = Math.max(...values);
     const winners = values.filter(v => v === best).length;
     if (winners > 1) return 'tie';

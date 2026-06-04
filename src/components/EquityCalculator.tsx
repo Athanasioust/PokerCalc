@@ -18,6 +18,7 @@ interface Props {
   heroHole: Card[];
   board: Card[];
   allKnownCards: Card[];
+  variant?: 'holdem' | 'omaha';
 }
 
 type VillainSlot = (Card | null)[];
@@ -43,7 +44,7 @@ const HAND_LABELS: Record<string, string> = {
   high_card: 'High Card',
 };
 
-export default function EquityCalculator({ heroHole, board, allKnownCards }: Props) {
+export default function EquityCalculator({ heroHole, board, allKnownCards, variant = 'holdem' }: Props) {
   const theme = useTheme();
   const { advancedMode, oddsFormat } = useSettings();
   const [villains, setVillains] = useState<VillainSlot[]>([[null, null]]);
@@ -92,12 +93,12 @@ export default function EquityCalculator({ heroHole, board, allKnownCards }: Pro
 
       if (singleVillain && villainModes[0] === 'range') {
         const combos = rangeToCombos(villainRanges[0], [...heroHole, ...board]);
-        res = calculateRangeEquity(heroHole, combos, board);
+        res = calculateRangeEquity(heroHole, combos, board, variant);
       } else {
         const fullVillains = villains.map(v => v.filter(Boolean) as Card[]);
         res = fullVillains.length === 1
-          ? calculateEquity(heroHole, fullVillains[0], board)
-          : calculateMultiEquity(heroHole, fullVillains, board);
+          ? calculateEquity(heroHole, fullVillains[0], board, variant)
+          : calculateMultiEquity(heroHole, fullVillains, board, variant);
       }
 
       if (calcKey.current !== key) return;

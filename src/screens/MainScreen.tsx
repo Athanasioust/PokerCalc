@@ -14,7 +14,7 @@ import EquityCalculator from '../components/EquityCalculator';
 import { Card } from '../logic/deck';
 import { DrawType, availableDraws, detectComboDraws } from '../logic/outsCalculator';
 import { calculatePercentages, PercentageResult } from '../logic/percentages';
-import { evaluateBestHand } from '../logic/handEvaluator';
+import { evaluateBestHand, evaluateBestHandOmaha } from '../logic/handEvaluator';
 import { saveHand, StreetSnapshot } from '../logic/history';
 import { useTheme } from '../ThemeContext';
 import TutorialModal from '../components/TutorialModal';
@@ -80,8 +80,10 @@ export default function MainScreen() {
   const hasMinCards = knownHoleCards.length >= 2 && knownBoard.length >= 3;
 
   const currentHand = useMemo(
-    () => evaluateBestHand(knownHoleCards, fullBoard),
-    [JSON.stringify(knownHoleCards), JSON.stringify(fullBoard)]
+    () => variant === 'omaha'
+      ? evaluateBestHandOmaha(knownHoleCards, fullBoard)
+      : evaluateBestHand(knownHoleCards, fullBoard),
+    [variant, JSON.stringify(knownHoleCards), JSON.stringify(fullBoard)]
   );
 
   const draws = useMemo(
@@ -402,6 +404,7 @@ export default function MainScreen() {
             heroHole={knownHoleCards}
             board={fullBoard}
             allKnownCards={allKnownCards}
+            variant={variant}
           />
         </View>
 

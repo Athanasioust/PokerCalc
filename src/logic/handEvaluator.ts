@@ -202,3 +202,32 @@ export function evaluateHandScore(holeCards: Card[], board: Card[]): number {
   }
   return best;
 }
+
+// Omaha: must use exactly 2 hole cards + exactly 3 board cards.
+export function evaluateBestHandOmaha(holeCards: Card[], board: Card[]): HandRank | null {
+  if (holeCards.length < 2 || board.length < 3) return null;
+  const holeCombos = combinations(holeCards, 2);
+  const boardCombos = combinations(board, 3);
+  let best: HandRank = 'high_card';
+  for (const h of holeCombos) {
+    for (const b of boardCombos) {
+      const rank = evaluate5([...h, ...b]);
+      if (HAND_RANK_VALUE[rank] > HAND_RANK_VALUE[best]) best = rank;
+    }
+  }
+  return best;
+}
+
+export function evaluateHandScoreOmaha(holeCards: Card[], board: Card[]): number {
+  if (holeCards.length < 2 || board.length < 3) return -1;
+  const holeCombos = combinations(holeCards, 2);
+  const boardCombos = combinations(board, 3);
+  let best = -1;
+  for (const h of holeCombos) {
+    for (const b of boardCombos) {
+      const s = evaluate5Score([...h, ...b]);
+      if (s > best) best = s;
+    }
+  }
+  return best;
+}
