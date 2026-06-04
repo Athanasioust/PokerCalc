@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image,
 } from 'react-native';
@@ -15,7 +15,7 @@ import { Card } from '../logic/deck';
 import { DrawType, availableDraws, detectComboDraws } from '../logic/outsCalculator';
 import { calculatePercentages, PercentageResult } from '../logic/percentages';
 import { evaluateBestHand } from '../logic/handEvaluator';
-import { saveHand } from '../logic/history';
+import { saveHand, StreetSnapshot } from '../logic/history';
 import { useTheme } from '../ThemeContext';
 import TutorialModal from '../components/TutorialModal';
 
@@ -46,7 +46,7 @@ export default function MainScreen() {
   const [pickerTarget, setPickerTarget] = useState<SlotTarget | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [showTutorial, setShowTutorial] = useState(false);
-  const lastSavedKeyRef = useRef<string>('');
+  const [streetSnapshots, setStreetSnapshots] = useState<Record<number, StreetSnapshot>>({});
 
   const holeCount = variant === 'holdem' ? 2 : 4;
   const hasAnyCard = holeCards.some(Boolean) || flop.some(Boolean) || turn || river;
@@ -100,22 +100,31 @@ export default function MainScreen() {
     return calculatePercentages(selectedDraw, knownHoleCards, knownBoard);
   }, [selectedDraw, JSON.stringify(knownHoleCards), JSON.stringify(knownBoard)]);
 
-  // Auto-save hand to history when we get a result — one entry per unique hand+board
+  // Update snapshot for the current street whenever the result changes
   useEffect(() => {
-    if (!result || knownHoleCards.length < 2) return;
-    const key = JSON.stringify({ variant, holeCards: knownHoleCards, board: fullBoard });
-    if (key === lastSavedKeyRef.current) return;
-    lastSavedKeyRef.current = key;
-    saveHand({
-      variant,
-      holeCards: knownHoleCards,
-      board: fullBoard,
-      handRank: currentHand,
-      selectedDraw,
-      outs: result.outs,
-      exactPct: result.exact,
-    });
+    if (!result || knownHoleCards.length < 2 || fullBoard.length < 3) return;
+    setStreetSnapshots(prev => ({
+      ...prev,
+      [fullBoard.length]: {
+        board: fullBoard,
+        selectedDraw: selectedDraw ?? null,
+        outs: result.outs,
+        exactPct: result.exact,
+        handRank: currentHand,
+      },
+    }));
   }, [result]);
+
+  // Drop snapshots for streets that no longer exist (e.g. user removed a card)
+  useEffect(() => {
+    setStreetSnapshots(prev => {
+      const clean = { ...prev };
+      for (const k of Object.keys(clean)) {
+        if (Number(k) > fullBoard.length) delete clean[Number(k)];
+      }
+      return clean;
+    });
+  }, [fullBoard.length]);
 
   // Build the used cards list, excluding the card in the current slot being edited
   const usedCardsForPicker = useMemo(() => {
@@ -229,11 +238,16 @@ export default function MainScreen() {
 
   function clearAll() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const snapshots = Object.values(streetSnapshots).sort((a, b) => a.board.length - b.board.length);
+    if (knownHoleCards.length >= 2 && snapshots.length > 0) {
+      saveHand({ variant, holeCards: knownHoleCards, streets: snapshots });
+    }
     setHoleCards(Array(holeCount).fill(null));
     setFlop([null, null, null]);
     setTurn(null);
     setRiver(null);
     setSelectedDraw(null);
+    setStreetSnapshots({});
   }
 
   return (
@@ -415,7 +429,7 @@ function Section({ label, children, theme }: { label: string; children: React.Re
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 16, paddingTop: 24, paddingBottom: 40 },
+  scroll: { padding: 16, paddingTop: 36, paddingBottom: 40 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 20,

@@ -313,7 +313,7 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.bg },
     flex: { flex: 1 },
-    scroll: { padding: 16, paddingTop: 24, paddingBottom: 16 },
+    scroll: { padding: 16, paddingTop: 36, paddingBottom: 16 },
     footer: {
       padding: 16, paddingBottom: 24,
       borderTopWidth: StyleSheet.hairlineWidth,

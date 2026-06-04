@@ -184,7 +184,7 @@ export default function SettingsScreen() {
 function makeStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    scroll: { padding: 16, paddingTop: 24, paddingBottom: 40 },
+    scroll: { padding: 16, paddingTop: 36, paddingBottom: 40 },
     pageTitle: { fontSize: 28, fontWeight: '800', color: theme.text, marginBottom: 24 },
     sectionTitle: {
       fontSize: 12, fontWeight: '700', color: theme.textMuted,
