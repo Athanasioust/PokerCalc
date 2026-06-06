@@ -295,8 +295,8 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
           </View>
 
           <Text style={[styles.boardCount, { color: theme.textMuted }]}>
-            {board.length === 0
-              ? `~${result.totalBoards.toLocaleString()} samples (pre-flop)`
+            {(board.length === 0 || (anyRangeMode && board.length <= 4))
+              ? `~${result.totalBoards.toLocaleString()} samples`
               : `${result.totalBoards.toLocaleString()} boards`}{' '}·{' '}
             {villainModes[0] === 'range'
               ? `vs ${villainRanges[0].length}-hand range`
