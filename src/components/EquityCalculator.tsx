@@ -80,9 +80,9 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
     if (villainModes[vi] === 'range') return villainRanges[vi].length > 0;
     return villains[vi].slice(0, villainCardCount).every(Boolean);
   }
-  const allVillainsReady = villains.every((_, vi) => villainReady(vi));
-  const canCalc = heroFull && allVillainsReady;
   const anyRangeMode = villainModes.some(m => m === 'range');
+  const allVillainsReady = villains.every((_, vi) => villainReady(vi));
+  const canCalc = heroFull && allVillainsReady && (!anyRangeMode || hasFlop);
 
   const pickerUsedCards: Card[] = [...allKnownCards, ...villains.flat().filter(Boolean) as Card[]].filter((c, _, arr) => {
     if (!pickerVillain) return true;
@@ -322,6 +322,9 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
 
       {!heroFull && (
         <Text style={[styles.hint, { color: theme.textMuted }]}>Enter your hole cards first</Text>
+      )}
+      {heroFull && anyRangeMode && !hasFlop && (
+        <Text style={[styles.hint, { color: theme.textMuted }]}>Enter the flop to calculate range equity</Text>
       )}
 
       <CardPicker
