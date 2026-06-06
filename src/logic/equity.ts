@@ -7,7 +7,7 @@ import {
 type Variant = 'holdem' | 'omaha';
 
 const PREFLOP_SAMPLES = 2500;
-const RANGE_EQUITY_SAMPLES = 400;
+const RANGE_EQUITY_SAMPLES = 800;
 
 function shuffleInPlace<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -210,13 +210,13 @@ export function calculateRangeEquity(
     };
   }
 
-  // Use Monte Carlo for flop (boardsNeeded >= 2) to avoid blocking the UI thread.
-  // Turn (boardsNeeded === 1) has only ~46 runouts so exact enumeration is fine.
+  // Pair sampling: sample one random villain per board runout.
+  // This is O(samples × 3 evals) instead of O(samples × range_size × evals),
+  // keeping the JS thread from blocking even on large ranges.
   if (boardsNeeded >= 2) {
     const rem = [...remaining];
     let hw = 0, vw = 0, t = 0, total = 0;
     const heroCounts: Record<string, number> = {};
-    let validBoardCount = 0;
     for (let i = 0; i < RANGE_EQUITY_SAMPLES; i++) {
       shuffleInPlace(rem);
       const extra = rem.slice(0, boardsNeeded);
@@ -224,15 +224,13 @@ export function calculateRangeEquity(
       const fullBoard = [...board, ...extra];
       const valid = validBase.filter(([a, b]) => !runoutSet.has(cardKey(a)) && !runoutSet.has(cardKey(b)));
       if (valid.length === 0) continue;
-      validBoardCount++;
+      const [va, vb] = valid[Math.floor(Math.random() * valid.length)];
       const heroRank = rankHand(heroHole, fullBoard, variant);
       if (heroRank) heroCounts[heroRank] = (heroCounts[heroRank] || 0) + 1;
       const hv = scoreHand(heroHole, fullBoard, variant);
-      for (const [a, b] of valid) {
-        const vv = scoreHand([a, b], fullBoard, variant);
-        if (hv > vv) hw++; else if (vv > hv) vw++; else t++;
-        total++;
-      }
+      const vv = scoreHand([va, vb], fullBoard, variant);
+      if (hv > vv) hw++; else if (vv > hv) vw++; else t++;
+      total++;
     }
     if (total === 0) return { heroWin: 0, villainWin: 0, tie: 0, totalBoards: 0 };
     return {
@@ -240,7 +238,7 @@ export function calculateRangeEquity(
       villainWin: Math.round(vw / total * 1000) / 10,
       tie: Math.round(t / total * 1000) / 10,
       totalBoards: RANGE_EQUITY_SAMPLES,
-      heroDistribution: buildDistribution(heroCounts, validBoardCount || 1),
+      heroDistribution: buildDistribution(heroCounts, total),
     };
   }
 

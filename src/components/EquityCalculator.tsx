@@ -97,22 +97,26 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
     setLoading(true);
     setTimeout(() => {
       if (calcKey.current !== key) return;
+      try {
+        let res: EquityResult | MultiEquityResult;
 
-      let res: EquityResult | MultiEquityResult;
+        if (singleVillain && villainModes[0] === 'range') {
+          const combos = rangeToCombos(villainRanges[0], [...heroHole, ...board]);
+          res = calculateRangeEquity(heroHole, combos, board, variant);
+        } else {
+          const fullVillains = villains.map(v => v.filter(Boolean) as Card[]);
+          res = fullVillains.length === 1
+            ? calculateEquity(heroHole, fullVillains[0], board, variant)
+            : calculateMultiEquity(heroHole, fullVillains, board, variant);
+        }
 
-      if (singleVillain && villainModes[0] === 'range') {
-        const combos = rangeToCombos(villainRanges[0], [...heroHole, ...board]);
-        res = calculateRangeEquity(heroHole, combos, board, variant);
-      } else {
-        const fullVillains = villains.map(v => v.filter(Boolean) as Card[]);
-        res = fullVillains.length === 1
-          ? calculateEquity(heroHole, fullVillains[0], board, variant)
-          : calculateMultiEquity(heroHole, fullVillains, board, variant);
+        if (calcKey.current !== key) return;
+        setResult(res);
+      } catch (e) {
+        // swallow — don't leave spinner running
+      } finally {
+        if (calcKey.current === key) setLoading(false);
       }
-
-      if (calcKey.current !== key) return;
-      setResult(res);
-      setLoading(false);
     }, 0);
   }, [canCalc, JSON.stringify(villainModes), JSON.stringify(villainRanges), JSON.stringify(villains), JSON.stringify(heroHole), JSON.stringify(board)]);
 
