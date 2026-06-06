@@ -6,6 +6,16 @@ import {
 
 type Variant = 'holdem' | 'omaha';
 
+const PREFLOP_SAMPLES = 2500;
+
+function shuffleInPlace<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function scoreHand(hole: Card[], board: Card[], variant: Variant): number {
   return variant === 'omaha'
     ? evaluateHandScoreOmaha(hole, board)
@@ -79,6 +89,30 @@ export function calculateEquity(
     };
   }
 
+  if (boardsNeeded >= 5) {
+    const rem = [...remaining];
+    let heroWins = 0, villainWins = 0, ties = 0;
+    const heroCounts: Record<string, number> = {};
+    for (let i = 0; i < PREFLOP_SAMPLES; i++) {
+      shuffleInPlace(rem);
+      const fullBoard = [...board, ...rem.slice(0, boardsNeeded)];
+      const hv = scoreHand(heroHole, fullBoard, variant);
+      const vv = scoreHand(villainHole, fullBoard, variant);
+      if (hv > vv) heroWins++;
+      else if (vv > hv) villainWins++;
+      else ties++;
+      const heroRank = rankHand(heroHole, fullBoard, variant);
+      if (heroRank) heroCounts[heroRank] = (heroCounts[heroRank] || 0) + 1;
+    }
+    return {
+      heroWin: Math.round((heroWins / PREFLOP_SAMPLES) * 1000) / 10,
+      villainWin: Math.round((villainWins / PREFLOP_SAMPLES) * 1000) / 10,
+      tie: Math.round((ties / PREFLOP_SAMPLES) * 1000) / 10,
+      totalBoards: PREFLOP_SAMPLES,
+      heroDistribution: buildDistribution(heroCounts, PREFLOP_SAMPLES),
+    };
+  }
+
   const boardCombos = combinations(remaining, boardsNeeded);
   let heroWins = 0, villainWins = 0, ties = 0;
   const heroCounts: Record<string, number> = {};
@@ -143,6 +177,38 @@ export function calculateRangeEquity(
     };
   }
 
+  if (boardsNeeded >= 5) {
+    const rem = [...remaining];
+    let hw = 0, vw = 0, t = 0, total = 0;
+    const heroCounts: Record<string, number> = {};
+    let validBoardCount = 0;
+    for (let i = 0; i < PREFLOP_SAMPLES; i++) {
+      shuffleInPlace(rem);
+      const runout = rem.slice(0, boardsNeeded);
+      const runoutSet = new Set(runout.map(cardKey));
+      const fullBoard = [...board, ...runout];
+      const valid = validBase.filter(([a, b]) => !runoutSet.has(cardKey(a)) && !runoutSet.has(cardKey(b)));
+      if (valid.length === 0) continue;
+      validBoardCount++;
+      const heroRank = rankHand(heroHole, fullBoard, variant);
+      if (heroRank) heroCounts[heroRank] = (heroCounts[heroRank] || 0) + 1;
+      const hv = scoreHand(heroHole, fullBoard, variant);
+      for (const [a, b] of valid) {
+        const vv = scoreHand([a, b], fullBoard, variant);
+        if (hv > vv) hw++; else if (vv > hv) vw++; else t++;
+        total++;
+      }
+    }
+    if (total === 0) return { heroWin: 0, villainWin: 0, tie: 0, totalBoards: 0 };
+    return {
+      heroWin: Math.round(hw / total * 1000) / 10,
+      villainWin: Math.round(vw / total * 1000) / 10,
+      tie: Math.round(t / total * 1000) / 10,
+      totalBoards: PREFLOP_SAMPLES,
+      heroDistribution: buildDistribution(heroCounts, validBoardCount || 1),
+    };
+  }
+
   const boardCombos = combinations(remaining, boardsNeeded);
   let hw = 0, vw = 0, t = 0, total = 0;
   const heroCounts: Record<string, number> = {};
@@ -202,6 +268,25 @@ export function calculateMultiEquity(
       tie: result === 'tie' ? 100 : 0,
       loss: result === 'villain' ? 100 : 0,
       totalBoards: 1,
+    };
+  }
+
+  if (boardsNeeded >= 5) {
+    const rem = [...remaining];
+    let heroWins = 0, ties = 0, losses = 0;
+    for (let i = 0; i < PREFLOP_SAMPLES; i++) {
+      shuffleInPlace(rem);
+      const fullBoard = [...board, ...rem.slice(0, boardsNeeded)];
+      const r = resolveBoard(fullBoard);
+      if (r === 'hero') heroWins++;
+      else if (r === 'tie') ties++;
+      else losses++;
+    }
+    return {
+      heroWin: Math.round((heroWins / PREFLOP_SAMPLES) * 1000) / 10,
+      tie: Math.round((ties / PREFLOP_SAMPLES) * 1000) / 10,
+      loss: Math.round((losses / PREFLOP_SAMPLES) * 1000) / 10,
+      totalBoards: PREFLOP_SAMPLES,
     };
   }
 

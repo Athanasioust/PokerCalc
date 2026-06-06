@@ -55,9 +55,18 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
   const [loading, setLoading] = useState(false);
   const calcKey = useRef(0);
 
-  const heroFull = heroHole.length >= 2;
+  const villainCardCount = variant === 'omaha' ? 4 : 2;
+  const heroFull = heroHole.length >= (variant === 'omaha' ? 4 : 2);
   const hasFlop = board.length >= 3;
   const singleVillain = villains.length === 1;
+
+  // When variant changes, reset villain slots to match card count
+  useEffect(() => {
+    setVillains(prev => prev.map(() => Array(villainCardCount).fill(null)));
+    setVillainModes(prev => prev.map(() => 'cards'));
+    setVillainRanges(prev => prev.map(() => []));
+    setResult(null);
+  }, [variant]);
 
   // When advanced mode is disabled, reset range modes to cards
   useEffect(() => {
@@ -69,10 +78,10 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
 
   function villainReady(vi: number): boolean {
     if (villainModes[vi] === 'range') return villainRanges[vi].length > 0;
-    return villains[vi].every(Boolean);
+    return villains[vi].slice(0, villainCardCount).every(Boolean);
   }
   const allVillainsReady = villains.every((_, vi) => villainReady(vi));
-  const canCalc = heroFull && hasFlop && allVillainsReady;
+  const canCalc = heroFull && allVillainsReady;
   const anyRangeMode = villainModes.some(m => m === 'range');
 
   const pickerUsedCards: Card[] = [...allKnownCards, ...villains.flat().filter(Boolean) as Card[]].filter((c, _, arr) => {
@@ -128,7 +137,7 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
   function addVillain() {
     if (villains.length >= MAX_VILLAINS) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setVillains([...villains, [null, null]]);
+    setVillains([...villains, Array(villainCardCount).fill(null)]);
     setVillainModes([...villainModes, 'cards']);
     setVillainRanges([...villainRanges, []]);
     setResult(null);
@@ -229,10 +238,10 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
 
             {mode === 'cards' ? (
               <View style={styles.cardRow}>
-                {[0, 1].map(ci => (
+                {Array.from({ length: villainCardCount }, (_, ci) => (
                   <CardSlot
                     key={ci}
-                    card={villain[ci]}
+                    card={villain[ci] ?? null}
                     onPress={() => handleSlotPress(vi, ci)}
                     onRemove={() => handleSlotPress(vi, ci)}
                   />
@@ -286,7 +295,9 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
           </View>
 
           <Text style={[styles.boardCount, { color: theme.textMuted }]}>
-            {result.totalBoards.toLocaleString()} boards ·{' '}
+            {board.length === 0
+              ? `~${result.totalBoards.toLocaleString()} samples (pre-flop)`
+              : `${result.totalBoards.toLocaleString()} boards`}{' '}·{' '}
             {villainModes[0] === 'range'
               ? `vs ${villainRanges[0].length}-hand range`
               : isMulti ? `${villains.length + 1}-way` : 'heads-up'}
@@ -311,9 +322,6 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
 
       {!heroFull && (
         <Text style={[styles.hint, { color: theme.textMuted }]}>Enter your hole cards first</Text>
-      )}
-      {heroFull && allVillainsReady && !hasFlop && (
-        <Text style={[styles.hint, { color: theme.textMuted }]}>Enter the flop to calculate equity</Text>
       )}
 
       <CardPicker

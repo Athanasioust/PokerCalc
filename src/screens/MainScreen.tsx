@@ -14,7 +14,7 @@ import PotOdds from '../components/PotOdds';
 import EquityCalculator from '../components/EquityCalculator';
 import { Card } from '../logic/deck';
 import { DrawType, availableDraws, detectComboDraws } from '../logic/outsCalculator';
-import { calculatePercentages, PercentageResult } from '../logic/percentages';
+import { calculatePercentages, calculateComboPercentages, PercentageResult } from '../logic/percentages';
 import { evaluateBestHand, evaluateBestHandOmaha } from '../logic/handEvaluator';
 import { saveHand, StreetSnapshot } from '../logic/history';
 import { useTheme } from '../ThemeContext';
@@ -96,6 +96,11 @@ export default function MainScreen() {
   const combos = useMemo(
     () => hasMinCards ? detectComboDraws(knownHoleCards, knownBoard) : [],
     [JSON.stringify(knownHoleCards), JSON.stringify(knownBoard), hasMinCards]
+  );
+
+  const comboPcts = useMemo(
+    () => combos.map(combo => calculateComboPercentages(combo, knownHoleCards, knownBoard)),
+    [JSON.stringify(combos), JSON.stringify(knownHoleCards), JSON.stringify(knownBoard)]
   );
 
   const result: PercentageResult | null = useMemo(() => {
@@ -374,7 +379,10 @@ export default function MainScreen() {
         {combos.map((combo, i) => (
           <View key={i} style={styles.comboBanner}>
             <Text style={styles.comboLabel}>Combo: {combo.label}</Text>
-            <Text style={styles.comboOuts}>{combo.outs} outs</Text>
+            <View style={styles.comboStats}>
+              <Text style={styles.comboOuts}>{combo.outs} outs</Text>
+              <Text style={styles.comboPct}>{comboPcts[i]?.exact ?? 0}%</Text>
+            </View>
           </View>
         ))}
 
@@ -489,5 +497,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginBottom: 12,
   },
   comboLabel: { fontSize: 14, fontWeight: '600', color: '#92400e' },
-  comboOuts: { fontSize: 16, fontWeight: '800', color: '#92400e' },
+  comboStats: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  comboOuts: { fontSize: 14, fontWeight: '600', color: '#92400e' },
+  comboPct: { fontSize: 18, fontWeight: '800', color: '#92400e' },
 });

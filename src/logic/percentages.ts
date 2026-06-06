@@ -1,5 +1,5 @@
 import { Card, remainingDeck, cardKey } from './deck';
-import { DrawType, calculateOuts } from './outsCalculator';
+import { DrawType, calculateOuts, ComboDrawResult } from './outsCalculator';
 
 export type Street = 'flop' | 'turn';
 
@@ -41,5 +41,22 @@ export function calculatePercentages(
   ).length;
   const exact = combos.length > 0 ? Math.round((hits / combos.length) * 1000) / 10 : 0;
 
+  return { outs, ruleOf2and4, exact, street };
+}
+
+export function calculateComboPercentages(
+  combo: ComboDrawResult,
+  holeCards: Card[],
+  board: Card[],
+): PercentageResult {
+  const street: Street = board.length <= 3 ? 'flop' : 'turn';
+  const cardsToCome = street === 'flop' ? 2 : 1;
+  const outs = combo.outCards.length;
+  const ruleOf2and4 = Math.min(100, outs * (cardsToCome === 2 ? 4 : 2));
+  const remaining = remainingDeck([...holeCards, ...board]);
+  const outKeys = new Set(combo.outCards.map(c => cardKey(c)));
+  const combos = combinations(remaining, cardsToCome);
+  const hits = combos.filter(c => c.some(card => outKeys.has(cardKey(card)))).length;
+  const exact = combos.length > 0 ? Math.round((hits / combos.length) * 1000) / 10 : 0;
   return { outs, ruleOf2and4, exact, street };
 }
