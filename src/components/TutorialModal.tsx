@@ -27,9 +27,19 @@ const SECTIONS = [
     body: 'Once you\'ve entered your hole cards and at least the flop, draw types appear automatically based on your hand. Tap a draw to see:\n\n• Outs — how many cards in the deck complete your draw\n• Exact % — computed by enumerating every possible runout\n• Rule of 2/4 — quick mental estimate (outs × 4 on the flop, × 2 on the turn)',
   },
   {
+    icon: 'layers-outline' as const,
+    title: 'Board Texture',
+    body: 'As soon as the flop is dealt, three coloured pills appear below the board showing the texture at a glance:\n\n• Wetness — Dry (few draws) · Semi-wet · Wet (flush + straight draws possible)\n• Suitedness — Rainbow (all different suits) · Two-tone · Monotone (all same suit)\n• Pairedness — Unpaired · Paired · Trips\n\nUse this to instantly categorise the board without counting cards yourself.',
+  },
+  {
+    icon: 'podium-outline' as const,
+    title: 'Hand Strength Percentile',
+    body: 'The "Current Hand" banner shows your made hand on the left and "Beats X% of hands" on the right.\n\nThis tells you how your holding ranks against every possible 2-card holding a villain could have on this exact board — green if you\'re in the top 25%, amber in the middle, red if your hand is weak relative to the board.\n\nUse it to judge how value-heavy or bluff-catching your range is.',
+  },
+  {
     icon: 'cash-outline' as const,
-    title: 'Pot Odds',
-    body: 'Enter the current pot size and the amount you need to call. The calculator shows your pot odds and whether your equity makes a call profitable based on your draw percentage.',
+    title: 'Pot Odds, SPR & Implied Odds',
+    body: 'Enter Pot, Bet to Call, and optionally Eff. Stack:\n\n• Pot odds % — the minimum equity you need to call profitably\n• SPR (Stack-to-Pot Ratio) — stack ÷ pot. Low (<3) means you\'re committed; High (>10) is an implied-odds spot for draws\n• Implied Odds — if your equity is below pot odds, a yellow box shows exactly how much more you need to win on future streets to break even\n• CALL / FOLD verdict — compares your draw equity to the pot odds required',
   },
   {
     icon: 'people-outline' as const,
