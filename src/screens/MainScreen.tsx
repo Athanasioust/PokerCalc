@@ -16,6 +16,8 @@ import { Card } from '../logic/deck';
 import { DrawType, availableDraws, detectComboDraws } from '../logic/outsCalculator';
 import { calculatePercentages, calculateComboPercentages, PercentageResult } from '../logic/percentages';
 import { evaluateBestHand, evaluateBestHandOmaha } from '../logic/handEvaluator';
+import { analyzeBoardTexture, BoardTexture } from '../logic/boardTexture';
+import { calculateHandStrengthPercentile } from '../logic/handStrength';
 import { saveHand, StreetSnapshot } from '../logic/history';
 import { useTheme } from '../ThemeContext';
 import TutorialModal from '../components/TutorialModal';
@@ -101,6 +103,18 @@ export default function MainScreen() {
   const comboPcts = useMemo(
     () => combos.map(combo => calculateComboPercentages(combo, knownHoleCards, knownBoard)),
     [JSON.stringify(combos), JSON.stringify(knownHoleCards), JSON.stringify(knownBoard)]
+  );
+
+  const boardTexture = useMemo<BoardTexture | null>(
+    () => knownBoard.length >= 3 ? analyzeBoardTexture(knownBoard) : null,
+    [JSON.stringify(knownBoard)]
+  );
+
+  const handStrengthPct = useMemo<number | null>(
+    () => currentHand && knownHoleCards.length >= (variant === 'omaha' ? 4 : 2) && fullBoard.length >= 3
+      ? calculateHandStrengthPercentile(knownHoleCards, fullBoard, variant)
+      : null,
+    [JSON.stringify(knownHoleCards), JSON.stringify(fullBoard), variant]
   );
 
   const result: PercentageResult | null = useMemo(() => {
@@ -321,7 +335,7 @@ export default function MainScreen() {
         {/* Current hand display */}
         {currentHand && (
           <View style={styles.sectionWrap}>
-            <HandDisplay handRank={currentHand} />
+            <HandDisplay handRank={currentHand} percentile={handStrengthPct} />
           </View>
         )}
 
@@ -373,6 +387,15 @@ export default function MainScreen() {
             </View>
           </View>
         </Section>
+
+        {/* Board texture */}
+        {boardTexture && (
+          <View style={styles.textureRow}>
+            <TexturePill label={boardTexture.wetness} type="wetness" />
+            <TexturePill label={boardTexture.suitedness} type="suitedness" />
+            <TexturePill label={boardTexture.pairedness} type="pairedness" />
+          </View>
+        )}
 
         {/* Combo draws banner */}
         {combos.map((combo, i) => (
@@ -429,6 +452,32 @@ export default function MainScreen() {
     </SafeAreaView>
   );
 }
+
+const TEXTURE_COLORS: Record<string, string> = {
+  Dry: '#6b7280',
+  'Semi-wet': '#f59e0b',
+  Wet: '#ef4444',
+  Rainbow: '#6b7280',
+  'Two-tone': '#3b82f6',
+  Monotone: '#8b5cf6',
+  Unpaired: '#6b7280',
+  Paired: '#f59e0b',
+  Trips: '#ef4444',
+};
+
+function TexturePill({ label, type }: { label: string; type: string }) {
+  const color = TEXTURE_COLORS[label] ?? '#6b7280';
+  return (
+    <View style={[texturePillStyles.pill, { borderColor: color, backgroundColor: color + '22' }]}>
+      <Text style={[texturePillStyles.text, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
+const texturePillStyles = StyleSheet.create({
+  pill: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  text: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+});
 
 function Section({ label, children, theme }: { label: string; children: React.ReactNode; theme: any }) {
   return (
@@ -492,6 +541,7 @@ const styles = StyleSheet.create({
   boardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
   boardGroup: { alignItems: 'center' },
   boardGroupLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+  textureRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
   comboBanner: {
     backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fbbf24',
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,

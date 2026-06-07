@@ -10,14 +10,39 @@ export default function PotOdds({ equity }: Props) {
   const theme = useTheme();
   const [pot, setPot] = useState('');
   const [bet, setBet] = useState('');
+  const [stack, setStack] = useState('');
 
   const potNum = parseFloat(pot.replace(/[^0-9.]/g, ''));
   const betNum = parseFloat(bet.replace(/[^0-9.]/g, ''));
-  const valid = !isNaN(potNum) && !isNaN(betNum) && potNum > 0 && betNum > 0;
+  const stackNum = parseFloat(stack.replace(/[^0-9.]/g, ''));
 
+  const valid = !isNaN(potNum) && !isNaN(betNum) && potNum > 0 && betNum > 0;
+  const hasStack = !isNaN(stackNum) && stackNum > 0;
+
+  // Pot odds %: call / (pot-after-bet + call)
+  // potNum = pot including villain's bet, betNum = your call
   const potOddsPercent = valid
     ? Math.round((betNum / (potNum + betNum)) * 1000) / 10
     : null;
+
+  // SPR = effective stack / pot (pot before your call = potNum)
+  const spr = valid && hasStack
+    ? Math.round((stackNum / potNum) * 10) / 10
+    : null;
+
+  const sprLabel =
+    spr === null ? null
+    : spr < 3 ? 'Low — committed'
+    : spr < 10 ? 'Medium'
+    : 'High — implied odds spot';
+
+  // Implied odds: extra $ you must win in future streets to break even
+  // Formula: bet/equity - (pot + bet)   [where equity is decimal]
+  const equityDecimal = equity !== null ? equity / 100 : null;
+  const impliedNeeded =
+    valid && equityDecimal !== null && equityDecimal > 0 && potOddsPercent !== null && equity! < potOddsPercent
+      ? Math.round(betNum / equityDecimal - (potNum + betNum))
+      : null;
 
   const shouldCall =
     equity !== null && potOddsPercent !== null && equity >= potOddsPercent;
@@ -49,6 +74,17 @@ export default function PotOdds({ equity }: Props) {
             placeholderTextColor={theme.borderStrong}
           />
         </View>
+        <View style={styles.inputWrap}>
+          <Text style={[styles.inputLabel, { color: theme.textMuted }]}>Eff. Stack</Text>
+          <TextInput
+            style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bgInput, color: theme.text }]}
+            value={stack}
+            onChangeText={setStack}
+            keyboardType="numeric"
+            placeholder="0"
+            placeholderTextColor={theme.borderStrong}
+          />
+        </View>
       </View>
 
       {valid && potOddsPercent !== null && (
@@ -57,12 +93,34 @@ export default function PotOdds({ equity }: Props) {
             <Text style={[styles.resultLabel, { color: theme.textMuted }]}>Pot odds needed</Text>
             <Text style={[styles.resultValue, { color: theme.text }]}>{potOddsPercent}%</Text>
           </View>
+
+          {spr !== null && (
+            <View style={styles.resultRow}>
+              <Text style={[styles.resultLabel, { color: theme.textMuted }]}>SPR</Text>
+              <Text style={[styles.resultValue, { color: theme.text }]}>
+                {spr}
+                <Text style={[styles.sprLabel, { color: theme.textMuted }]}> · {sprLabel}</Text>
+              </Text>
+            </View>
+          )}
+
           {equity !== null ? (
             <>
               <View style={styles.resultRow}>
                 <Text style={[styles.resultLabel, { color: theme.textMuted }]}>Your equity</Text>
                 <Text style={[styles.resultValue, { color: theme.text }]}>{equity}%</Text>
               </View>
+
+              {impliedNeeded !== null && impliedNeeded > 0 && (
+                <View style={[styles.impliedBox, { backgroundColor: theme.isDark ? '#2a2010' : '#fffbeb', borderColor: '#f59e0b' }]}>
+                  <Text style={[styles.impliedTitle, { color: '#b45309' }]}>Implied Odds Needed</Text>
+                  <Text style={[styles.impliedValue, { color: '#92400e' }]}>${impliedNeeded} more</Text>
+                  <Text style={[styles.impliedSub, { color: theme.textMuted }]}>
+                    Need to win ${impliedNeeded} more on future streets to break even
+                  </Text>
+                </View>
+              )}
+
               <View style={[styles.verdict, shouldCall ? styles.call : styles.fold]}>
                 <Text style={styles.verdictText}>{shouldCall ? '✓ CALL' : '✗ FOLD'}</Text>
                 <Text style={styles.verdictSub}>
@@ -89,18 +147,26 @@ const styles = StyleSheet.create({
     fontSize: 13, fontWeight: '600',
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12,
   },
-  inputs: { flexDirection: 'row', gap: 12 },
+  inputs: { flexDirection: 'row', gap: 8 },
   inputWrap: { flex: 1 },
   inputLabel: { fontSize: 12, marginBottom: 4 },
   input: {
     borderWidth: 1.5, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8,
-    fontSize: 16, fontWeight: '600',
+    paddingHorizontal: 8, paddingVertical: 8,
+    fontSize: 15, fontWeight: '600',
   },
   result: { marginTop: 14, gap: 8 },
   resultRow: { flexDirection: 'row', justifyContent: 'space-between' },
   resultLabel: { fontSize: 14 },
   resultValue: { fontSize: 14, fontWeight: '700' },
+  sprLabel: { fontSize: 12, fontWeight: '400' },
+  impliedBox: {
+    borderWidth: 1, borderRadius: 8,
+    padding: 10, gap: 2,
+  },
+  impliedTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  impliedValue: { fontSize: 18, fontWeight: '800' },
+  impliedSub: { fontSize: 12, marginTop: 2 },
   verdict: { marginTop: 4, borderRadius: 8, padding: 12, alignItems: 'center' },
   call: { backgroundColor: '#dcfce7' },
   fold: { backgroundColor: '#fee2e2' },
