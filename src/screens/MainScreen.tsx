@@ -339,39 +339,38 @@ export default function MainScreen() {
           </View>
         </Section>
 
-        {/* Flop */}
-        <Section label="Flop" theme={theme}>
-          <View style={styles.cardRow}>
-            {[0, 1, 2].map(i => (
+        {/* Board — flop / turn / river in one row */}
+        <Section label="Board" theme={theme}>
+          <View style={styles.boardRow}>
+            <View style={styles.boardGroup}>
+              <View style={styles.cardRow}>
+                {[0, 1, 2].map(i => (
+                  <CardSlot
+                    key={i}
+                    card={flop[i]}
+                    onPress={() => openPicker({ section: 'flop', index: i })}
+                    onRemove={() => removeCard({ section: 'flop', index: i })}
+                  />
+                ))}
+              </View>
+              <Text style={[styles.boardGroupLabel, { color: theme.textMuted }]}>Flop</Text>
+            </View>
+            <View style={styles.boardGroup}>
               <CardSlot
-                key={i}
-                card={flop[i]}
-                onPress={() => openPicker({ section: 'flop', index: i })}
-                onRemove={() => removeCard({ section: 'flop', index: i })}
+                card={turn}
+                onPress={() => openPicker({ section: 'turn' })}
+                onRemove={() => removeCard({ section: 'turn' })}
               />
-            ))}
-          </View>
-        </Section>
-
-        {/* Turn */}
-        <Section label="Turn" theme={theme}>
-          <View style={styles.cardRow}>
-            <CardSlot
-              card={turn}
-              onPress={() => openPicker({ section: 'turn' })}
-              onRemove={() => removeCard({ section: 'turn' })}
-            />
-          </View>
-        </Section>
-
-        {/* River */}
-        <Section label="River" theme={theme}>
-          <View style={styles.cardRow}>
-            <CardSlot
-              card={river}
-              onPress={() => openPicker({ section: 'river' })}
-              onRemove={() => removeCard({ section: 'river' })}
-            />
+              <Text style={[styles.boardGroupLabel, { color: theme.textMuted }]}>Turn</Text>
+            </View>
+            <View style={styles.boardGroup}>
+              <CardSlot
+                card={river}
+                onPress={() => openPicker({ section: 'river' })}
+                onRemove={() => removeCard({ section: 'river' })}
+              />
+              <Text style={[styles.boardGroupLabel, { color: theme.textMuted }]}>River</Text>
+            </View>
           </View>
         </Section>
 
@@ -490,6 +489,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
   },
   cardRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  boardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
+  boardGroup: { alignItems: 'center' },
+  boardGroupLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
   comboBanner: {
     backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fbbf24',
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
