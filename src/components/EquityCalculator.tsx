@@ -19,6 +19,7 @@ interface Props {
   board: Card[];
   allKnownCards: Card[];
   variant?: 'holdem' | 'omaha';
+  onVillainCardsChange?: (cards: Card[]) => void;
 }
 
 type VillainSlot = (Card | null)[];
@@ -44,7 +45,7 @@ const HAND_LABELS: Record<string, string> = {
   high_card: 'High Card',
 };
 
-export default function EquityCalculator({ heroHole, board, allKnownCards, variant = 'holdem' }: Props) {
+export default function EquityCalculator({ heroHole, board, allKnownCards, variant = 'holdem', onVillainCardsChange }: Props) {
   const theme = useTheme();
   const { advancedMode, oddsFormat } = useSettings();
   const [villains, setVillains] = useState<VillainSlot[]>([[null, null]]);
@@ -67,6 +68,11 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
     setVillainRanges(prev => prev.map(() => []));
     setResult(null);
   }, [variant]);
+
+  // Notify parent whenever villain cards change so hero picker can exclude them
+  useEffect(() => {
+    onVillainCardsChange?.(villains.flat().filter(Boolean) as Card[]);
+  }, [JSON.stringify(villains)]);
 
   // When advanced mode is disabled, reset range modes to cards
   useEffect(() => {

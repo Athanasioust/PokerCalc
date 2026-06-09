@@ -51,6 +51,7 @@ export default function MainScreen() {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [showTutorial, setShowTutorial] = useState(false);
   const [streetSnapshots, setStreetSnapshots] = useState<Record<number, StreetSnapshot>>({});
+  const [villainCards, setVillainCards] = useState<Card[]>([]);
 
   const holeCount = variant === 'holdem' ? 2 : 4;
   const hasAnyCard = holeCards.some(Boolean) || flop.some(Boolean) || turn || river;
@@ -72,6 +73,7 @@ export default function MainScreen() {
     ...(flop.filter(Boolean) as Card[]),
     ...(turn ? [turn] : []),
     ...(river ? [river] : []),
+    ...villainCards,
   ];
 
   const knownHoleCards = holeCards.filter(Boolean) as Card[];
@@ -437,6 +439,7 @@ export default function MainScreen() {
             board={fullBoard}
             allKnownCards={allKnownCards}
             variant={variant}
+            onVillainCardsChange={setVillainCards}
           />
         </View>
 
