@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.pokercalc.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "icon": "./assets/app_icon.png",
       "predictiveBackGestureEnabled": false
     },
