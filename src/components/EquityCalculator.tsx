@@ -127,6 +127,7 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
   }, [canCalc, JSON.stringify(villainModes), JSON.stringify(villainRanges), JSON.stringify(villains), JSON.stringify(heroHole), JSON.stringify(board)]);
 
   function handleSlotPress(vi: number, ci: number) {
+    if (!heroFull) return;
     if (villains[vi][ci]) {
       const updated = villains.map((v, i) => i === vi ? v.map((c, j) => j === ci ? null : c) : v);
       setVillains(updated);
@@ -254,6 +255,7 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
                     card={villain[ci] ?? null}
                     onPress={() => handleSlotPress(vi, ci)}
                     onRemove={() => handleSlotPress(vi, ci)}
+                    disabled={!heroFull}
                   />
                 ))}
               </View>

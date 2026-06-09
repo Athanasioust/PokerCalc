@@ -77,6 +77,11 @@ export default function MainScreen() {
   ];
 
   const knownHoleCards = holeCards.filter(Boolean) as Card[];
+
+  const heroComplete = knownHoleCards.length >= holeCount;
+  const flopComplete = flop.filter(Boolean).length === 3;
+  const turnEntered = turn !== null;
+
   const knownBoard = [
     ...(flop.filter(Boolean) as Card[]),
     ...(turn ? [turn] : []),
@@ -366,6 +371,7 @@ export default function MainScreen() {
                     card={flop[i]}
                     onPress={() => openPicker({ section: 'flop', index: i })}
                     onRemove={() => removeCard({ section: 'flop', index: i })}
+                    disabled={!heroComplete}
                   />
                 ))}
               </View>
@@ -376,6 +382,7 @@ export default function MainScreen() {
                 card={turn}
                 onPress={() => openPicker({ section: 'turn' })}
                 onRemove={() => removeCard({ section: 'turn' })}
+                disabled={!heroComplete || !flopComplete}
               />
               <Text style={[styles.boardGroupLabel, { color: theme.textMuted }]}>Turn</Text>
             </View>
@@ -384,6 +391,7 @@ export default function MainScreen() {
                 card={river}
                 onPress={() => openPicker({ section: 'river' })}
                 onRemove={() => removeCard({ section: 'river' })}
+                disabled={!heroComplete || !flopComplete || !turnEntered}
               />
               <Text style={[styles.boardGroupLabel, { color: theme.textMuted }]}>River</Text>
             </View>
