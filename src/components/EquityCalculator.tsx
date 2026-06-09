@@ -142,7 +142,10 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
     const { vi, ci } = pickerVillain;
     const updated = villains.map((v, i) => i === vi ? v.map((c, j) => j === ci ? card : c) : v);
     setVillains(updated);
-    setPickerVillain(null);
+
+    // Advance to the next empty slot in this villain's hand
+    const nextEmpty = updated[vi].findIndex((c, j) => j > ci && c === null);
+    setPickerVillain(nextEmpty !== -1 ? { vi, ci: nextEmpty } : null);
   }
 
   function addVillain() {
