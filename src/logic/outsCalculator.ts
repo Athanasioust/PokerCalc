@@ -52,42 +52,51 @@ function calcFlushDraw(holeCards: Card[], board: Card[], remaining: Card[]): Out
   return { outs: outCards.length, outCards, available: true };
 }
 
-function getStraightOuts(cards: Card[], remaining: Card[]): { oesd: OutsResult; gutshot: OutsResult } {
-  const ranks = [...new Set(cards.map(c => c.rank))].sort((a, b) => a - b);
-  // Include ace-low (A=1) possibility
-  const rankSet = new Set<number>(ranks);
-  if (rankSet.has(14)) rankSet.add(1);
-  const uniqueRanks = [...rankSet].sort((a, b) => a - b);
-
-  let oesdRanks: number[] = [];
-  let gutshotRanks: number[] = [];
-
-  // Check all windows of 5 consecutive ranks
+// Returns whether a set of rank values contains 5 consecutive ranks.
+function hasFiveStraight(ranks: Set<number>): boolean {
   for (let low = 1; low <= 10; low++) {
-    const window = [low, low + 1, low + 2, low + 3, low + 4];
-    const have = window.filter(r => uniqueRanks.includes(r));
-    const missing = window.filter(r => !uniqueRanks.includes(r));
+    let run = true;
+    for (let k = 0; k < 5; k++) {
+      if (!ranks.has(low + k)) { run = false; break; }
+    }
+    if (run) return true;
+  }
+  return false;
+}
 
-    if (have.length === 4 && missing.length === 1) {
-      const missingRank = missing[0];
-      // OESD: missing rank is at either end of the window
-      if (missingRank === low || missingRank === low + 4) {
-        if (!oesdRanks.includes(missingRank)) oesdRanks.push(missingRank);
-      } else {
-        if (!gutshotRanks.includes(missingRank)) gutshotRanks.push(missingRank);
-      }
+function getStraightOuts(cards: Card[], remaining: Card[]): { oesd: OutsResult; gutshot: OutsResult } {
+  const none: OutsResult = { outs: 0, outCards: [], available: false };
+
+  // Base ranks held, with the ace allowed to play low (A = 1).
+  const baseRanks = new Set<number>(cards.map(c => c.rank));
+  if (baseRanks.has(14)) baseRanks.add(1);
+
+  // Already a made straight — no draw.
+  if (hasFiveStraight(baseRanks)) return { oesd: none, gutshot: none };
+
+  // A "completing rank" is a rank we don't yet hold that makes a 5-card straight.
+  // Counting how many distinct ranks complete the straight is what separates an
+  // open-ended draw (2 ends → ~8 outs) from a one-ended/gutshot draw (1 → ~4 outs).
+  // This correctly treats A-K-Q-J and A-2-3-4 as gutshots (only one rank completes),
+  // and double-gutshots as open-ended (two ranks complete).
+  const completingRanks = new Set<number>(); // stored as actual card ranks (A = 14)
+  for (let r = 1; r <= 14; r++) {
+    if (baseRanks.has(r)) continue;
+    const test = new Set(baseRanks);
+    test.add(r);
+    if (r === 14) test.add(1); // drawn ace can also play low
+    if (hasFiveStraight(test)) {
+      completingRanks.add(r === 1 ? 14 : r); // ace-low draw is an Ace card
     }
   }
 
-  const toActualRank = (r: number): number => r === 1 ? 14 : r;
+  const ranks = [...completingRanks];
+  const outCards = remaining.filter(c => ranks.includes(c.rank));
+  const result: OutsResult = { outs: outCards.length, outCards, available: true };
 
-  const oesdOutCards = remaining.filter(c => oesdRanks.map(toActualRank).includes(c.rank as number));
-  const gutshotOutCards = remaining.filter(c => gutshotRanks.map(toActualRank).includes(c.rank as number));
-
-  return {
-    oesd: { outs: oesdOutCards.length, outCards: oesdOutCards, available: oesdRanks.length > 0 },
-    gutshot: { outs: gutshotOutCards.length, outCards: gutshotOutCards, available: gutshotRanks.length > 0 },
-  };
+  if (completingRanks.size >= 2) return { oesd: result, gutshot: none };
+  if (completingRanks.size === 1) return { oesd: none, gutshot: result };
+  return { oesd: none, gutshot: none };
 }
 
 function calcTwoPairDraw(holeCards: Card[], board: Card[], remaining: Card[]): OutsResult {

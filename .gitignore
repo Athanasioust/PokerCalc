@@ -43,3 +43,6 @@ yarn-error.*
 # Build outputs
 *.apk
 *.aab
+
+# Logic test harness compiled output
+dist-test/
