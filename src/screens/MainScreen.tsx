@@ -442,7 +442,7 @@ export default function MainScreen() {
 
         {/* Pot odds */}
         <View style={styles.sectionWrap}>
-          <PotOdds equity={result?.exact ?? null} />
+          <PotOdds equity={result?.exact ?? null} clearSignal={clearSignal} />
         </View>
 
         {/* Equity vs villain */}

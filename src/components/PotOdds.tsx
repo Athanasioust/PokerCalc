@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { useTheme } from '../ThemeContext';
 
 interface Props {
   equity: number | null;
+  clearSignal?: number;
 }
 
-export default function PotOdds({ equity }: Props) {
+export default function PotOdds({ equity, clearSignal = 0 }: Props) {
   const theme = useTheme();
   const [pot, setPot] = useState('');
   const [bet, setBet] = useState('');
   const [stack, setStack] = useState('');
+
+  // Reset the inputs when the user clears the hand on the main screen.
+  useEffect(() => {
+    if (clearSignal === 0) return; // skip initial mount
+    setPot('');
+    setBet('');
+    setStack('');
+  }, [clearSignal]);
 
   const potNum = parseFloat(pot.replace(/[^0-9.]/g, ''));
   const betNum = parseFloat(bet.replace(/[^0-9.]/g, ''));
