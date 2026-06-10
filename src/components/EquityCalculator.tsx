@@ -20,6 +20,7 @@ interface Props {
   allKnownCards: Card[];
   variant?: 'holdem' | 'omaha';
   onVillainCardsChange?: (cards: Card[]) => void;
+  clearSignal?: number;
 }
 
 type VillainSlot = (Card | null)[];
@@ -45,7 +46,7 @@ const HAND_LABELS: Record<string, string> = {
   high_card: 'High Card',
 };
 
-export default function EquityCalculator({ heroHole, board, allKnownCards, variant = 'holdem', onVillainCardsChange }: Props) {
+export default function EquityCalculator({ heroHole, board, allKnownCards, variant = 'holdem', onVillainCardsChange, clearSignal = 0 }: Props) {
   const theme = useTheme();
   const { advancedMode, oddsFormat } = useSettings();
   const [villains, setVillains] = useState<VillainSlot[]>([[null, null]]);
@@ -68,6 +69,17 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
     setVillainRanges(prev => prev.map(() => []));
     setResult(null);
   }, [variant]);
+
+  // When the user clears the hand on the main screen, reset villains to a
+  // single empty slot so stale cards don't stay locked in place.
+  useEffect(() => {
+    if (clearSignal === 0) return; // skip initial mount
+    setVillains([Array(villainCardCount).fill(null)]);
+    setVillainModes(['cards']);
+    setVillainRanges([[]]);
+    setResult(null);
+    setPickerVillain(null);
+  }, [clearSignal]);
 
   // Notify parent whenever villain cards change so hero picker can exclude them
   useEffect(() => {

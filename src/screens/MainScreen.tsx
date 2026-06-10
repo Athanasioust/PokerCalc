@@ -52,6 +52,7 @@ export default function MainScreen() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [streetSnapshots, setStreetSnapshots] = useState<Record<number, StreetSnapshot>>({});
   const [villainCards, setVillainCards] = useState<Card[]>([]);
+  const [clearSignal, setClearSignal] = useState(0);
 
   const holeCount = variant === 'holdem' ? 2 : 4;
   const hasAnyCard = holeCards.some(Boolean) || flop.some(Boolean) || turn || river;
@@ -130,20 +131,22 @@ export default function MainScreen() {
     return calculatePercentages(selectedDraw, knownHoleCards, knownBoard);
   }, [selectedDraw, JSON.stringify(knownHoleCards), JSON.stringify(knownBoard)]);
 
-  // Update snapshot for the current street whenever the result changes
+  // Record a snapshot for the current street whenever the hand or board changes.
+  // Captures the made hand even when no draw is selected, so every played hand
+  // (hero hand + at least a flop) is saved to history on clear.
   useEffect(() => {
-    if (!result || knownHoleCards.length < 2 || fullBoard.length < 3) return;
+    if (knownHoleCards.length < holeCount || fullBoard.length < 3) return;
     setStreetSnapshots(prev => ({
       ...prev,
       [fullBoard.length]: {
         board: fullBoard,
         selectedDraw: selectedDraw ?? null,
-        outs: result.outs,
-        exactPct: result.exact,
+        outs: result?.outs ?? null,
+        exactPct: result?.exact ?? null,
         handRank: currentHand,
       },
     }));
-  }, [result]);
+  }, [JSON.stringify(fullBoard), JSON.stringify(knownHoleCards), selectedDraw, result, currentHand]);
 
   // Drop snapshots for streets that no longer exist (e.g. user removed a card)
   useEffect(() => {
@@ -278,6 +281,8 @@ export default function MainScreen() {
     setRiver(null);
     setSelectedDraw(null);
     setStreetSnapshots({});
+    setVillainCards([]);
+    setClearSignal(s => s + 1);
   }
 
   return (
@@ -448,6 +453,7 @@ export default function MainScreen() {
             allKnownCards={allKnownCards}
             variant={variant}
             onVillainCardsChange={setVillainCards}
+            clearSignal={clearSignal}
           />
         </View>
 
