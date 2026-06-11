@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, Modal,
@@ -19,6 +19,7 @@ export default function SessionScreen() {
   const [showEndModal, setShowEndModal] = useState<Session | null>(null);
   const [buyInInput, setBuyInInput] = useState('');
   const [cashOutInput, setCashOutInput] = useState('');
+  const submitting = useRef(false);
 
   const refresh = useCallback(() => {
     loadSessions().then(setSessions);
@@ -49,11 +50,21 @@ export default function SessionScreen() {
     // Buy-in must be a positive amount.
     const amount = parseAmount(buyInInput, { min: 0 });
     if (amount === null || amount <= 0) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await startSession(amount);
-    setShowStartModal(false);
-    setBuyInInput('');
-    refresh();
+    if (submitting.current) return; // guard against double-tap
+    submitting.current = true;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const ok = await startSession(amount);
+      if (!ok) {
+        Alert.alert('Could not start session', 'Saving failed — please try again.');
+        return;
+      }
+      setShowStartModal(false);
+      setBuyInInput('');
+      refresh();
+    } finally {
+      submitting.current = false;
+    }
   }
 
   async function handleEnd() {
@@ -61,17 +72,31 @@ export default function SessionScreen() {
     // Cash-out can be zero (busted) but never negative.
     const amount = parseAmount(cashOutInput, { min: 0 });
     if (amount === null) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await endSession(showEndModal.id, amount);
-    setShowEndModal(null);
-    setCashOutInput('');
-    refresh();
+    if (submitting.current) return; // guard against double-tap
+    submitting.current = true;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const ok = await endSession(showEndModal.id, amount);
+      if (!ok) {
+        Alert.alert('Could not save session', 'Saving failed — please try again.');
+        return;
+      }
+      setShowEndModal(null);
+      setCashOutInput('');
+      refresh();
+    } finally {
+      submitting.current = false;
+    }
   }
 
   function handleDelete(id: string) {
     Alert.alert('Delete Session', 'Remove this session from history?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteSession(id); refresh(); } },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        const ok = await deleteSession(id);
+        if (!ok) { Alert.alert('Could not delete', 'Please try again.'); return; }
+        refresh();
+      } },
     ]);
   }
 
@@ -101,14 +126,14 @@ export default function SessionScreen() {
             </View>
             <View style={s.statDivider} />
             <View style={s.statItem}>
-              <Text style={[s.statValue, { color: profitColor(totalProfit) }]}>
+              <Text style={[s.statValue, { color: profitColor(totalProfit) }]} numberOfLines={1} adjustsFontSizeToFit>
                 {totalProfit >= 0 ? '+' : ''}{totalProfit}
               </Text>
               <Text style={s.statLabel}>Total P&L</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.statItem}>
-              <Text style={[s.statValue, hourlyRate !== null ? { color: profitColor(hourlyRate) } : {}]}>
+              <Text style={[s.statValue, hourlyRate !== null ? { color: profitColor(hourlyRate) } : {}]} numberOfLines={1} adjustsFontSizeToFit>
                 {hourlyRate !== null ? `${hourlyRate >= 0 ? '+' : ''}${hourlyRate.toFixed(1)}/h` : '—'}
               </Text>
               <Text style={s.statLabel}>Hourly</Text>
@@ -126,13 +151,13 @@ export default function SessionScreen() {
           <View style={s.bestWorstRow}>
             <View style={[s.bestWorstCard, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
               <Text style={[s.bestWorstLabel, { color: theme.textMuted }]}>Best Session</Text>
-              <Text style={[s.bestWorstValue, { color: '#4ade80' }]}>
+              <Text style={[s.bestWorstValue, { color: '#4ade80' }]} numberOfLines={1} adjustsFontSizeToFit>
                 {bestSession !== null ? `+${bestSession}` : '—'}
               </Text>
             </View>
             <View style={[s.bestWorstCard, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
               <Text style={[s.bestWorstLabel, { color: theme.textMuted }]}>Worst Session</Text>
-              <Text style={[s.bestWorstValue, { color: worstSession !== null && worstSession < 0 ? '#f87171' : '#4ade80' }]}>
+              <Text style={[s.bestWorstValue, { color: worstSession !== null && worstSession < 0 ? '#f87171' : '#4ade80' }]} numberOfLines={1} adjustsFontSizeToFit>
                 {worstSession !== null ? (worstSession >= 0 ? `+${worstSession}` : `${worstSession}`) : '—'}
               </Text>
             </View>
@@ -201,7 +226,7 @@ export default function SessionScreen() {
           <View key={session.id} style={s.sessionCard}>
             <View style={s.sessionTop}>
               <Text style={s.sessionDate}>{formatDate(session.startTime)}</Text>
-              <Text style={[s.sessionProfit, { color: profitColor(profit) }]}>
+              <Text style={[s.sessionProfit, { color: profitColor(profit) }]} numberOfLines={1}>
                 {profit >= 0 ? '+' : ''}{profit}
               </Text>
             </View>

@@ -18,11 +18,17 @@ export async function loadSessions(): Promise<Session[]> {
   } catch { return []; }
 }
 
-async function saveSessions(sessions: Session[]): Promise<void> {
-  await AsyncStorage.setItem(KEY, JSON.stringify(sessions));
+// Returns true on success, false if the write failed (e.g. storage full).
+async function saveSessions(sessions: Session[]): Promise<boolean> {
+  try {
+    await AsyncStorage.setItem(KEY, JSON.stringify(sessions));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export async function startSession(buyIn: number): Promise<Session> {
+export async function startSession(buyIn: number): Promise<boolean> {
   const sessions = await loadSessions();
   const session: Session = {
     id: Math.random().toString(36).slice(2),
@@ -32,21 +38,20 @@ export async function startSession(buyIn: number): Promise<Session> {
     cashOut: null,
     notes: '',
   };
-  await saveSessions([session, ...sessions]);
-  return session;
+  return saveSessions([session, ...sessions]);
 }
 
-export async function endSession(id: string, cashOut: number): Promise<void> {
+export async function endSession(id: string, cashOut: number): Promise<boolean> {
   const sessions = await loadSessions();
   const updated = sessions.map(s =>
     s.id === id ? { ...s, endTime: Date.now(), cashOut } : s
   );
-  await saveSessions(updated);
+  return saveSessions(updated);
 }
 
-export async function deleteSession(id: string): Promise<void> {
+export async function deleteSession(id: string): Promise<boolean> {
   const sessions = await loadSessions();
-  await saveSessions(sessions.filter(s => s.id !== id));
+  return saveSessions(sessions.filter(s => s.id !== id));
 }
 
 export function sessionProfit(s: Session): number | null {

@@ -25,20 +25,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [oddsFormat, setOddsFormatState] = useState<OddsFormat>('%');
 
   useEffect(() => {
-    AsyncStorage.multiGet([PREF_ADVANCED_MODE, PREF_ODDS_FORMAT]).then(pairs => {
-      if (pairs[0][1] === 'false') setAdvancedModeState(false);
-      if (pairs[1][1] === 'X:1') setOddsFormatState('X:1');
-    });
+    AsyncStorage.multiGet([PREF_ADVANCED_MODE, PREF_ODDS_FORMAT])
+      .then(pairs => {
+        if (pairs[0][1] === 'false') setAdvancedModeState(false);
+        if (pairs[1][1] === 'X:1') setOddsFormatState('X:1');
+      })
+      .catch(() => {}); // fall back to defaults if prefs can't be read
   }, []);
 
   function setAdvancedMode(v: boolean) {
     setAdvancedModeState(v);
-    AsyncStorage.setItem(PREF_ADVANCED_MODE, String(v));
+    AsyncStorage.setItem(PREF_ADVANCED_MODE, String(v)).catch(() => {});
   }
 
   function setOddsFormat(f: OddsFormat) {
     setOddsFormatState(f);
-    AsyncStorage.setItem(PREF_ODDS_FORMAT, f);
+    AsyncStorage.setItem(PREF_ODDS_FORMAT, f).catch(() => {});
   }
 
   return (

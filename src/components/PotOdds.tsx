@@ -107,8 +107,8 @@ export default function PotOdds({ equity, clearSignal = 0 }: Props) {
           {spr !== null && (
             <View style={styles.resultRow}>
               <Text style={[styles.resultLabel, { color: theme.textMuted }]}>SPR</Text>
-              <Text style={[styles.resultValue, { color: theme.text }]}>
-                {spr}
+              <Text style={[styles.resultValue, { color: theme.text, flexShrink: 1, textAlign: 'right' }]} numberOfLines={1}>
+                {spr > 999 ? '999+' : spr}
                 <Text style={[styles.sprLabel, { color: theme.textMuted }]}> · {sprLabel}</Text>
               </Text>
             </View>
