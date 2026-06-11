@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { useTheme } from '../ThemeContext';
+import { sanitizeAmount, parseAmount } from '../utils/sanitize';
 
 interface Props {
   equity: number | null;
@@ -21,22 +22,22 @@ export default function PotOdds({ equity, clearSignal = 0 }: Props) {
     setStack('');
   }, [clearSignal]);
 
-  const potNum = parseFloat(pot.replace(/[^0-9.]/g, ''));
-  const betNum = parseFloat(bet.replace(/[^0-9.]/g, ''));
-  const stackNum = parseFloat(stack.replace(/[^0-9.]/g, ''));
+  const potNum = parseAmount(pot, { min: 0 });
+  const betNum = parseAmount(bet, { min: 0 });
+  const stackNum = parseAmount(stack, { min: 0 });
 
-  const valid = !isNaN(potNum) && !isNaN(betNum) && potNum > 0 && betNum > 0;
-  const hasStack = !isNaN(stackNum) && stackNum > 0;
+  const valid = potNum !== null && betNum !== null && potNum > 0 && betNum > 0;
+  const hasStack = stackNum !== null && stackNum > 0;
 
   // Pot odds %: call / (pot-after-bet + call)
   // potNum = pot including villain's bet, betNum = your call
   const potOddsPercent = valid
-    ? Math.round((betNum / (potNum + betNum)) * 1000) / 10
+    ? Math.round((betNum! / (potNum! + betNum!)) * 1000) / 10
     : null;
 
   // SPR = effective stack / pot (pot before your call = potNum)
   const spr = valid && hasStack
-    ? Math.round((stackNum / potNum) * 10) / 10
+    ? Math.round((stackNum! / potNum!) * 10) / 10
     : null;
 
   const sprLabel =
@@ -50,7 +51,7 @@ export default function PotOdds({ equity, clearSignal = 0 }: Props) {
   const equityDecimal = equity !== null ? equity / 100 : null;
   const impliedNeeded =
     valid && equityDecimal !== null && equityDecimal > 0 && potOddsPercent !== null && equity! < potOddsPercent
-      ? Math.round(betNum / equityDecimal - (potNum + betNum))
+      ? Math.round(betNum! / equityDecimal - (potNum! + betNum!))
       : null;
 
   const shouldCall =
@@ -66,8 +67,8 @@ export default function PotOdds({ equity, clearSignal = 0 }: Props) {
           <TextInput
             style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bgInput, color: theme.text }]}
             value={pot}
-            onChangeText={setPot}
-            keyboardType="numeric"
+            onChangeText={t => setPot(sanitizeAmount(t))}
+            keyboardType="decimal-pad"
             placeholder="0"
             placeholderTextColor={theme.borderStrong}
           />
@@ -77,8 +78,8 @@ export default function PotOdds({ equity, clearSignal = 0 }: Props) {
           <TextInput
             style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bgInput, color: theme.text }]}
             value={bet}
-            onChangeText={setBet}
-            keyboardType="numeric"
+            onChangeText={t => setBet(sanitizeAmount(t))}
+            keyboardType="decimal-pad"
             placeholder="0"
             placeholderTextColor={theme.borderStrong}
           />
@@ -88,8 +89,8 @@ export default function PotOdds({ equity, clearSignal = 0 }: Props) {
           <TextInput
             style={[styles.input, { borderColor: theme.border, backgroundColor: theme.bgInput, color: theme.text }]}
             value={stack}
-            onChangeText={setStack}
-            keyboardType="numeric"
+            onChangeText={t => setStack(sanitizeAmount(t))}
+            keyboardType="decimal-pad"
             placeholder="0"
             placeholderTextColor={theme.borderStrong}
           />

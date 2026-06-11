@@ -7,6 +7,7 @@ import { calculateEquity, calculateMultiEquity, calculateRangeEquity } from '../
 import { analyzeBoardTexture } from '../boardTexture';
 import { calculateHandStrengthPercentile } from '../handStrength';
 import { rangeToCombos, RANGE_PRESETS } from '../ranges';
+import { sanitizeAmount, parseAmount } from '../../utils/sanitize';
 
 // ---- helpers ---------------------------------------------------------------
 const RANK_MAP: Record<string, Rank> = {
@@ -201,6 +202,28 @@ section('Hand strength percentile');
 
   const weak = calculateHandStrengthPercentile(cards('7c 2d'), cards('Ah Ks Qd'), 'holdem');
   check('7-2 on AKQ beats very few hands (<20%)', weak < 20, `percentile=${weak}%`);
+}
+
+// ---- 11. Input sanitization ------------------------------------------------
+section('Input sanitization (money/numeric fields)');
+{
+  eq('strips letters: "200abc" → "200"', sanitizeAmount('200abc'), '200');
+  eq('strips minus sign: "-50" → "50"', sanitizeAmount('-50'), '50');
+  eq('strips spaces/symbols: " $1,000 " → "1000"', sanitizeAmount(' $1,000 '), '1000');
+  eq('collapses multiple dots: "1.2.3" → "1.23"', sanitizeAmount('1.2.3'), '1.23');
+  eq('caps to 2 decimals: "5.999" → "5.99"', sanitizeAmount('5.999'), '5.99');
+  eq('removes scientific notation: "1e5" → "15"', sanitizeAmount('1e5'), '15');
+  eq('trims leading zeros: "007" → "7"', sanitizeAmount('007'), '7');
+  eq('keeps single zero: "0" → "0"', sanitizeAmount('0'), '0');
+  eq('keeps "0.5" intact', sanitizeAmount('0.5'), '0.5');
+  eq('caps integer digits to 9', sanitizeAmount('1234567890123'), '123456789');
+  eq('empty stays empty', sanitizeAmount(''), '');
+
+  eq('parseAmount rejects negative', parseAmount('-5', { min: 0 }), null);
+  eq('parseAmount rejects lone dot', parseAmount('.', { min: 0 }), null);
+  eq('parseAmount rejects empty', parseAmount('', { min: 0 }), null);
+  eq('parseAmount accepts "33.5"', parseAmount('33.5', { min: 0 }), 33.5);
+  eq('parseAmount enforces max', parseAmount('5000', { min: 0, max: 1000 }), null);
 }
 
 // ---- report ----------------------------------------------------------------

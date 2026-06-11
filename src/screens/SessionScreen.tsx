@@ -10,6 +10,7 @@ import {
   deleteSession, sessionProfit, sessionDuration,
 } from '../logic/sessions';
 import { useTheme } from '../ThemeContext';
+import { sanitizeAmount, parseAmount } from '../utils/sanitize';
 
 export default function SessionScreen() {
   const theme = useTheme();
@@ -45,8 +46,9 @@ export default function SessionScreen() {
   const CHART_H = 56;
 
   async function handleStart() {
-    const amount = parseFloat(buyInInput);
-    if (isNaN(amount) || amount <= 0) return;
+    // Buy-in must be a positive amount.
+    const amount = parseAmount(buyInInput, { min: 0 });
+    if (amount === null || amount <= 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await startSession(amount);
     setShowStartModal(false);
@@ -56,8 +58,9 @@ export default function SessionScreen() {
 
   async function handleEnd() {
     if (!showEndModal) return;
-    const amount = parseFloat(cashOutInput);
-    if (isNaN(amount) || amount < 0) return;
+    // Cash-out can be zero (busted) but never negative.
+    const amount = parseAmount(cashOutInput, { min: 0 });
+    if (amount === null) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await endSession(showEndModal.id, amount);
     setShowEndModal(null);
@@ -234,8 +237,8 @@ export default function SessionScreen() {
             <TextInput
               style={[s.modalInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bgInput }]}
               value={buyInInput}
-              onChangeText={setBuyInInput}
-              keyboardType="numeric"
+              onChangeText={t => setBuyInInput(sanitizeAmount(t))}
+              keyboardType="decimal-pad"
               placeholder="e.g. 200"
               placeholderTextColor={theme.textMuted}
               autoFocus
@@ -266,20 +269,23 @@ export default function SessionScreen() {
             <TextInput
               style={[s.modalInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bgInput }]}
               value={cashOutInput}
-              onChangeText={setCashOutInput}
-              keyboardType="numeric"
+              onChangeText={t => setCashOutInput(sanitizeAmount(t))}
+              keyboardType="decimal-pad"
               placeholder="e.g. 350"
               placeholderTextColor={theme.textMuted}
               autoFocus
             />
-            {cashOutInput !== '' && !isNaN(parseFloat(cashOutInput)) && showEndModal && (
-              <Text style={[s.profitPreview, {
-                color: profitColor(parseFloat(cashOutInput) - showEndModal.buyIn),
-              }]}>
-                {parseFloat(cashOutInput) - showEndModal.buyIn >= 0 ? 'Profit: +' : 'Loss: '}
-                {Math.abs(parseFloat(cashOutInput) - showEndModal.buyIn)}
-              </Text>
-            )}
+            {(() => {
+              const co = parseAmount(cashOutInput, { min: 0 });
+              if (co === null || !showEndModal) return null;
+              const delta = co - showEndModal.buyIn;
+              return (
+                <Text style={[s.profitPreview, { color: profitColor(delta) }]}>
+                  {delta >= 0 ? 'Profit: +' : 'Loss: '}
+                  {Math.abs(delta)}
+                </Text>
+              );
+            })()}
             <View style={s.modalBtns}>
               <TouchableOpacity style={[s.modalBtn, { borderColor: theme.border }]} onPress={() => setShowEndModal(null)}>
                 <Text style={[s.modalBtnText, { color: theme.textMuted }]}>Cancel</Text>
