@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import CardSlot from '../components/CardSlot';
@@ -38,6 +39,9 @@ const ONBOARDING_STEPS = [
   '   Long-press any card to remove it',
 ];
 
+// Persisted flag so the "How to use" banner only ever shows until dismissed.
+const ONBOARDING_DISMISSED_KEY = 'pref_onboarding_dismissed';
+
 export default function MainScreen() {
   useKeepAwake();
   const theme = useTheme();
@@ -48,7 +52,7 @@ export default function MainScreen() {
   const [river, setRiver] = useState<Card | null>(null);
   const [selectedDraw, setSelectedDraw] = useState<DrawType | null>(null);
   const [pickerTarget, setPickerTarget] = useState<SlotTarget | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [streetSnapshots, setStreetSnapshots] = useState<Record<number, StreetSnapshot>>({});
   const [villainCards, setVillainCards] = useState<Card[]>([]);
@@ -56,6 +60,19 @@ export default function MainScreen() {
 
   const holeCount = variant === 'holdem' ? 2 : 4;
   const hasAnyCard = holeCards.some(Boolean) || flop.some(Boolean) || turn || river;
+
+  // Show the "How to use" banner only on the first launch — once the user
+  // dismisses it, the flag is persisted and it never appears again.
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDING_DISMISSED_KEY)
+      .then(v => { if (v !== 'true') setShowOnboarding(true); })
+      .catch(() => {});
+  }, []);
+
+  function dismissOnboarding() {
+    setShowOnboarding(false);
+    AsyncStorage.setItem(ONBOARDING_DISMISSED_KEY, 'true').catch(() => {});
+  }
 
   function switchVariant(v: Variant) {
     if (v === variant) return;
@@ -309,7 +326,7 @@ export default function MainScreen() {
           <View style={[styles.onboarding, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
             <View style={styles.onboardingHeader}>
               <Text style={[styles.onboardingTitle, { color: theme.text }]}>How to use</Text>
-              <TouchableOpacity onPress={() => setShowOnboarding(false)}>
+              <TouchableOpacity onPress={dismissOnboarding}>
                 <Text style={[styles.onboardingDismiss, { color: theme.textMuted }]}>✕</Text>
               </TouchableOpacity>
             </View>
