@@ -195,8 +195,11 @@ export default function MainScreen() {
     setSelectedDraw(null);
   }
 
+  // Returns the first empty slot in canonical order (all hole cards, then
+  // flop, turn, river). Scanning from the start — rather than from the slot
+  // just filled — ensures an earlier empty hole card is never skipped when the
+  // user taps the second hole card before the first.
   function findNextEmptySlot(
-    current: SlotTarget,
     hc: (Card | null)[],
     fp: (Card | null)[],
     tn: Card | null,
@@ -210,15 +213,7 @@ export default function MainScreen() {
       { section: 'turn' as const },
       { section: 'river' as const },
     ];
-    const currentIdx = slots.findIndex(s => {
-      if (s.section !== current.section) return false;
-      if ((s.section === 'hole' || s.section === 'flop') && (current.section === 'hole' || current.section === 'flop')) {
-        return (s as any).index === (current as any).index;
-      }
-      return true;
-    });
-    for (let i = currentIdx + 1; i < slots.length; i++) {
-      const slot = slots[i];
+    for (const slot of slots) {
       let card: Card | null = null;
       if (slot.section === 'hole') card = hc[(slot as any).index];
       else if (slot.section === 'flop') card = fp[(slot as any).index];
@@ -262,7 +257,7 @@ export default function MainScreen() {
     setSelectedDraw(null);
 
     if (wasEmpty) {
-      const next = findNextEmptySlot(pickerTarget, updatedHole, updatedFlop, updatedTurn, updatedRiver);
+      const next = findNextEmptySlot(updatedHole, updatedFlop, updatedTurn, updatedRiver);
       setPickerTarget(next);
     } else {
       setPickerTarget(null);
