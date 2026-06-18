@@ -6,7 +6,11 @@ import {
 
 type Variant = 'holdem' | 'omaha';
 
-const PREFLOP_SAMPLES = 2500;
+// Monte Carlo sample count. Used whenever the board is incomplete enough that
+// exact enumeration of remaining runouts would be too expensive — i.e. 3+ cards
+// still to come (preflop, or a partial flop of 1–2 cards). With 0–2 cards to
+// come (full flop, turn, river) we enumerate exactly: at most C(45,2)=990 boards.
+const MONTE_CARLO_SAMPLES = 2500;
 const RANGE_EQUITY_SAMPLES = 800;
 
 function shuffleInPlace<T>(arr: T[]): T[] {
@@ -90,11 +94,12 @@ export function calculateEquity(
     };
   }
 
-  if (boardsNeeded >= 5) {
+  // 3+ cards to come: sample instead of enumerating (C(47,4)=178k would freeze).
+  if (boardsNeeded >= 3) {
     const rem = [...remaining];
     let heroWins = 0, villainWins = 0, ties = 0;
     const heroCounts: Record<string, number> = {};
-    for (let i = 0; i < PREFLOP_SAMPLES; i++) {
+    for (let i = 0; i < MONTE_CARLO_SAMPLES; i++) {
       shuffleInPlace(rem);
       const fullBoard = [...board, ...rem.slice(0, boardsNeeded)];
       const hv = scoreHand(heroHole, fullBoard, variant);
@@ -106,11 +111,11 @@ export function calculateEquity(
       if (heroRank) heroCounts[heroRank] = (heroCounts[heroRank] || 0) + 1;
     }
     return {
-      heroWin: Math.round((heroWins / PREFLOP_SAMPLES) * 1000) / 10,
-      villainWin: Math.round((villainWins / PREFLOP_SAMPLES) * 1000) / 10,
-      tie: Math.round((ties / PREFLOP_SAMPLES) * 1000) / 10,
-      totalBoards: PREFLOP_SAMPLES,
-      heroDistribution: buildDistribution(heroCounts, PREFLOP_SAMPLES),
+      heroWin: Math.round((heroWins / MONTE_CARLO_SAMPLES) * 1000) / 10,
+      villainWin: Math.round((villainWins / MONTE_CARLO_SAMPLES) * 1000) / 10,
+      tie: Math.round((ties / MONTE_CARLO_SAMPLES) * 1000) / 10,
+      totalBoards: MONTE_CARLO_SAMPLES,
+      heroDistribution: buildDistribution(heroCounts, MONTE_CARLO_SAMPLES),
     };
   }
 
@@ -183,7 +188,7 @@ export function calculateRangeEquity(
     let hw = 0, vw = 0, t = 0, total = 0;
     const heroCounts: Record<string, number> = {};
     let validBoardCount = 0;
-    for (let i = 0; i < PREFLOP_SAMPLES; i++) {
+    for (let i = 0; i < MONTE_CARLO_SAMPLES; i++) {
       shuffleInPlace(rem);
       const runout = rem.slice(0, boardsNeeded);
       const runoutSet = new Set(runout.map(cardKey));
@@ -205,7 +210,7 @@ export function calculateRangeEquity(
       heroWin: Math.round(hw / total * 1000) / 10,
       villainWin: Math.round(vw / total * 1000) / 10,
       tie: Math.round(t / total * 1000) / 10,
-      totalBoards: PREFLOP_SAMPLES,
+      totalBoards: MONTE_CARLO_SAMPLES,
       heroDistribution: buildDistribution(heroCounts, validBoardCount || 1),
     };
   }
@@ -304,10 +309,11 @@ export function calculateMultiEquity(
     };
   }
 
-  if (boardsNeeded >= 5) {
+  // 3+ cards to come: sample instead of enumerating (would freeze multi-way).
+  if (boardsNeeded >= 3) {
     const rem = [...remaining];
     let heroWins = 0, ties = 0, losses = 0;
-    for (let i = 0; i < PREFLOP_SAMPLES; i++) {
+    for (let i = 0; i < MONTE_CARLO_SAMPLES; i++) {
       shuffleInPlace(rem);
       const fullBoard = [...board, ...rem.slice(0, boardsNeeded)];
       const r = resolveBoard(fullBoard);
@@ -316,10 +322,10 @@ export function calculateMultiEquity(
       else losses++;
     }
     return {
-      heroWin: Math.round((heroWins / PREFLOP_SAMPLES) * 1000) / 10,
-      tie: Math.round((ties / PREFLOP_SAMPLES) * 1000) / 10,
-      loss: Math.round((losses / PREFLOP_SAMPLES) * 1000) / 10,
-      totalBoards: PREFLOP_SAMPLES,
+      heroWin: Math.round((heroWins / MONTE_CARLO_SAMPLES) * 1000) / 10,
+      tie: Math.round((ties / MONTE_CARLO_SAMPLES) * 1000) / 10,
+      loss: Math.round((losses / MONTE_CARLO_SAMPLES) * 1000) / 10,
+      totalBoards: MONTE_CARLO_SAMPLES,
     };
   }
 

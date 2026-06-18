@@ -133,6 +133,34 @@ section('Equity — preflop all-in (Monte Carlo, ±3.5%)');
   near('AA vs 72o — hero ≈ 87.7%', dom.heroWin, 87.7, 3.5);
 }
 
+// ---- 5b. Equity: partial board must sample (not freeze) --------------------
+section('Equity — partial board sampling (perf + sanity)');
+{
+  // 1 board card → boardsNeeded 4. Exact enumeration would be C(47,4)=178k boards
+  // and lock the JS thread. Must use Monte Carlo and return quickly.
+  const t0 = Date.now();
+  const oneCard = calculateEquity(cards('Ah Kd'), cards('Ts Qc'), cards('2h'));
+  const elapsed = Date.now() - t0;
+  check('1-card board equity returns fast (<3s)', elapsed < 3000, `took ${elapsed}ms`);
+  eq('1-card board uses sampling (totalBoards = 2500)', oneCard.totalBoards, 2500);
+  near('1-card board sum ≈ 100', oneCard.heroWin + oneCard.villainWin + oneCard.tie, 100, 0.6);
+
+  // 2 board cards → boardsNeeded 3, also sampled.
+  const twoCard = calculateEquity(cards('Ah Kd'), cards('Ts Qc'), cards('2h 7s'));
+  eq('2-card board uses sampling (totalBoards = 2500)', twoCard.totalBoards, 2500);
+  near('2-card board sum ≈ 100', twoCard.heroWin + twoCard.villainWin + twoCard.tie, 100, 0.6);
+
+  // Full flop → boardsNeeded 2: exact enumeration preserved (C(45,2)=990).
+  const flop = calculateEquity(cards('Ah Kd'), cards('Ts Qc'), cards('2h 7s 9d'));
+  eq('full flop stays exact (totalBoards = 990)', flop.totalBoards, 990);
+  eq('full flop sum = 100 exactly', flop.heroWin + flop.villainWin + flop.tie, 100);
+
+  // Multi-way partial board must also sample, not freeze.
+  const mw = calculateMultiEquity(cards('Ah Kd'), [cards('Ts Qc'), cards('9h 9s')], cards('2h'));
+  eq('multi-way 1-card board uses sampling', mw.totalBoards, 2500);
+  near('multi-way 1-card board sum ≈ 100', mw.heroWin + mw.loss + mw.tie, 100, 0.6);
+}
+
 // ---- 6. Multi-way equity ---------------------------------------------------
 section('Multi-way equity (3-way preflop)');
 {
