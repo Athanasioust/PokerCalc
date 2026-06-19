@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { PercentageResult } from '../logic/percentages';
 import { useTheme } from '../ThemeContext';
+import { semantic, tabularNums } from '../designTokens';
 
 interface Props {
   result: PercentageResult | null;
@@ -34,11 +35,11 @@ export default function ResultsPanel({ result }: Props) {
       <View style={styles.percentages}>
         <View style={styles.percentRow}>
           <Text style={styles.percentLabel}>Exact</Text>
-          <Text style={[styles.percentValue, { color: '#4ade80' }]}>{result.exact}%</Text>
+          <Text style={[styles.percentValue, { color: semantic.win }]}>{result.exact}%</Text>
         </View>
         <View style={styles.percentRow}>
           <Text style={styles.percentLabel}>Rule of 2/4</Text>
-          <Text style={[styles.percentValue, { color: '#facc15' }]}>{result.ruleOf2and4}%</Text>
+          <Text style={[styles.percentValue, { color: semantic.warn }]}>{result.ruleOf2and4}%</Text>
         </View>
       </View>
 
@@ -54,7 +55,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   outsBox: { alignItems: 'center', marginBottom: 16 },
-  outsNumber: { fontSize: 64, fontWeight: '800', color: '#fff', lineHeight: 68 },
+  outsNumber: { fontSize: 64, fontWeight: '800', color: '#fff', lineHeight: 68, ...tabularNums },
   outsLabel: {
     fontSize: 16, color: '#aaa',
     textTransform: 'uppercase', letterSpacing: 1,
@@ -63,8 +64,8 @@ const styles = StyleSheet.create({
   percentages: { width: '100%', gap: 10, marginBottom: 16 },
   percentRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 },
   percentLabel: { fontSize: 16, color: '#aaa' },
-  percentValue: { fontSize: 20, fontWeight: '700' },
-  street: { fontSize: 12, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 },
+  percentValue: { fontSize: 20, fontWeight: '700', ...tabularNums },
+  street: { fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
   empty: { paddingVertical: 12 },
   emptyText: { fontSize: 14, fontStyle: 'italic' },
 });

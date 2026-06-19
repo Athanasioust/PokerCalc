@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { useTheme } from '../ThemeContext';
 import { sanitizeAmount, parseAmount } from '../utils/sanitize';
+import { semantic, tabularNums } from '../designTokens';
 
 interface Props {
   equity: number | null;
@@ -122,9 +123,9 @@ export default function PotOdds({ equity, clearSignal = 0 }: Props) {
               </View>
 
               {impliedNeeded !== null && impliedNeeded > 0 && (
-                <View style={[styles.impliedBox, { backgroundColor: theme.isDark ? '#2a2010' : '#fffbeb', borderColor: '#f59e0b' }]}>
-                  <Text style={[styles.impliedTitle, { color: '#b45309' }]}>Implied Odds Needed</Text>
-                  <Text style={[styles.impliedValue, { color: '#92400e' }]}>${impliedNeeded} more</Text>
+                <View style={[styles.impliedBox, { backgroundColor: theme.isDark ? '#2a2010' : semantic.warnSurface, borderColor: semantic.warn }]}>
+                  <Text style={[styles.impliedTitle, { color: semantic.warnText }]}>Implied Odds Needed</Text>
+                  <Text style={[styles.impliedValue, { color: semantic.warnText }]}>${impliedNeeded} more</Text>
                   <Text style={[styles.impliedSub, { color: theme.textMuted }]}>
                     Need to win ${impliedNeeded} more on future streets to break even
                   </Text>
@@ -162,24 +163,25 @@ const styles = StyleSheet.create({
   inputLabel: { fontSize: 12, marginBottom: 4 },
   input: {
     borderWidth: 1.5, borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 8,
+    paddingHorizontal: 8, paddingVertical: 12,
     fontSize: 15, fontWeight: '600',
+    ...tabularNums,
   },
   result: { marginTop: 14, gap: 8 },
   resultRow: { flexDirection: 'row', justifyContent: 'space-between' },
   resultLabel: { fontSize: 14 },
-  resultValue: { fontSize: 14, fontWeight: '700' },
+  resultValue: { fontSize: 14, fontWeight: '700', ...tabularNums },
   sprLabel: { fontSize: 12, fontWeight: '400' },
   impliedBox: {
     borderWidth: 1, borderRadius: 8,
     padding: 10, gap: 2,
   },
   impliedTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  impliedValue: { fontSize: 18, fontWeight: '800' },
+  impliedValue: { fontSize: 18, fontWeight: '800', ...tabularNums },
   impliedSub: { fontSize: 12, marginTop: 2 },
   verdict: { marginTop: 4, borderRadius: 8, padding: 12, alignItems: 'center' },
-  call: { backgroundColor: '#dcfce7' },
-  fold: { backgroundColor: '#fee2e2' },
+  call: { backgroundColor: semantic.winSurface },
+  fold: { backgroundColor: semantic.loseSurface },
   verdictText: { fontSize: 18, fontWeight: '800', color: '#1a1a2e' },
   verdictSub: { fontSize: 12, color: '#555', marginTop: 2 },
   hint: { fontSize: 13, fontStyle: 'italic', marginTop: 4 },

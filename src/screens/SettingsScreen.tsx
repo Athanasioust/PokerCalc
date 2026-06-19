@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Switch, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, useThemeMode } from '../ThemeContext';
 import { ThemeMode } from '../theme';
 import { clearHistory } from '../logic/history';
 import { useSettings, OddsFormat } from '../SettingsContext';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.3.3';
 
 const PREF_HAPTICS = 'pref_haptics';
 const PREF_VARIANT = 'pref_default_variant';
@@ -56,7 +57,7 @@ export default function SettingsScreen() {
   const s = makeStyles(theme);
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView edges={['top']} style={s.safe}>
       <ScrollView contentContainerStyle={s.scroll}>
         <Text style={s.pageTitle}>Settings</Text>
 
@@ -184,7 +185,7 @@ export default function SettingsScreen() {
 function makeStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    scroll: { padding: 16, paddingTop: 36, paddingBottom: 40 },
+    scroll: { padding: 16, paddingTop: 8, paddingBottom: 40 },
     pageTitle: { fontSize: 28, fontWeight: '800', color: theme.text, marginBottom: 24 },
     sectionTitle: {
       fontSize: 12, fontWeight: '700', color: theme.textMuted,

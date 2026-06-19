@@ -13,6 +13,7 @@ import {
 import { rangeToCombos } from '../logic/ranges';
 import { useTheme } from '../ThemeContext';
 import { useSettings } from '../SettingsContext';
+import { semantic, tabularNums } from '../designTokens';
 
 interface Props {
   heroHole: Card[];
@@ -307,19 +308,19 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
           <View style={styles.labels}>
             <View style={styles.labelGroup}>
               <Text style={[styles.labelName, { color: theme.textMuted }]}>You</Text>
-              <Text style={[styles.labelPct, { color: '#4ade80' }]}>{fmtOdds(heroWin)}</Text>
+              <Text style={[styles.labelPct, { color: semantic.win }]}>{fmtOdds(heroWin)}</Text>
             </View>
             {tie > 0 && (
               <View style={styles.labelGroup}>
                 <Text style={[styles.labelName, { color: theme.textMuted }]}>Tie</Text>
-                <Text style={[styles.labelPct, { color: '#facc15' }]}>{tie}%</Text>
+                <Text style={[styles.labelPct, { color: semantic.tie }]}>{tie}%</Text>
               </View>
             )}
             <View style={styles.labelGroup}>
               <Text style={[styles.labelName, { color: theme.textMuted }]}>
                 {isMulti ? 'Villains' : 'Villain'}
               </Text>
-              <Text style={[styles.labelPct, { color: '#f87171' }]}>{fmtOdds(loss)}</Text>
+              <Text style={[styles.labelPct, { color: semantic.lose }]}>{fmtOdds(loss)}</Text>
             </View>
           </View>
 
@@ -385,14 +386,14 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14 },
   results: { marginTop: 16 },
   bar: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', backgroundColor: '#eee' },
-  heroBar: { backgroundColor: '#4ade80' },
-  tieBar: { backgroundColor: '#facc15' },
-  lossBar: { backgroundColor: '#f87171' },
+  heroBar: { backgroundColor: semantic.win },
+  tieBar: { backgroundColor: semantic.tie },
+  lossBar: { backgroundColor: semantic.lose },
   labels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   labelGroup: { alignItems: 'center' },
   labelName: { fontSize: 12 },
-  labelPct: { fontSize: 18, fontWeight: '700' },
-  boardCount: { fontSize: 11, textAlign: 'center', marginTop: 6 },
+  labelPct: { fontSize: 18, fontWeight: '700', ...tabularNums },
+  boardCount: { fontSize: 11, textAlign: 'center', marginTop: 6, ...tabularNums },
   distSection: { marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
   distTitle: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   distGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

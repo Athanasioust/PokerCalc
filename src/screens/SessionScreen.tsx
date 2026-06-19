@@ -11,6 +11,7 @@ import {
 } from '../logic/sessions';
 import { useTheme } from '../ThemeContext';
 import { sanitizeAmount, parseAmount } from '../utils/sanitize';
+import { semantic, tabularNums } from '../designTokens';
 
 export default function SessionScreen() {
   const theme = useTheme();
@@ -105,8 +106,8 @@ export default function SessionScreen() {
   }
 
   function profitColor(p: number): string {
-    if (p > 0) return '#4ade80';
-    if (p < 0) return '#f87171';
+    if (p > 0) return semantic.win;
+    if (p < 0) return semantic.lose;
     return theme.textMuted;
   }
 
@@ -140,7 +141,7 @@ export default function SessionScreen() {
             </View>
             <View style={s.statDivider} />
             <View style={s.statItem}>
-              <Text style={[s.statValue, winRate !== null ? { color: winRate >= 50 ? '#4ade80' : '#f87171' } : {}]}>
+              <Text style={[s.statValue, winRate !== null ? { color: winRate >= 50 ? semantic.win : semantic.lose } : {}]}>
                 {winRate !== null ? `${winRate}%` : '—'}
               </Text>
               <Text style={s.statLabel}>Win Rate</Text>
@@ -151,13 +152,13 @@ export default function SessionScreen() {
           <View style={s.bestWorstRow}>
             <View style={[s.bestWorstCard, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
               <Text style={[s.bestWorstLabel, { color: theme.textMuted }]}>Best Session</Text>
-              <Text style={[s.bestWorstValue, { color: '#4ade80' }]} numberOfLines={1} adjustsFontSizeToFit>
+              <Text style={[s.bestWorstValue, { color: semantic.win }]} numberOfLines={1} adjustsFontSizeToFit>
                 {bestSession !== null ? `+${bestSession}` : '—'}
               </Text>
             </View>
             <View style={[s.bestWorstCard, { backgroundColor: theme.bgCard, borderColor: theme.border }]}>
               <Text style={[s.bestWorstLabel, { color: theme.textMuted }]}>Worst Session</Text>
-              <Text style={[s.bestWorstValue, { color: worstSession !== null && worstSession < 0 ? '#f87171' : '#4ade80' }]} numberOfLines={1} adjustsFontSizeToFit>
+              <Text style={[s.bestWorstValue, { color: worstSession !== null && worstSession < 0 ? semantic.lose : semantic.win }]} numberOfLines={1} adjustsFontSizeToFit>
                 {worstSession !== null ? (worstSession >= 0 ? `+${worstSession}` : `${worstSession}`) : '—'}
               </Text>
             </View>
@@ -178,13 +179,13 @@ export default function SessionScreen() {
                         {p >= 0 ? (
                           <>
                             <View style={{ height: CHART_H - barH }} />
-                            <View style={[s.bar, { height: barH, backgroundColor: '#4ade80' }]} />
+                            <View style={[s.bar, { height: barH, backgroundColor: semantic.win }]} />
                             <View style={{ height: CHART_H }} />
                           </>
                         ) : (
                           <>
                             <View style={{ height: CHART_H }} />
-                            <View style={[s.bar, { height: barH, backgroundColor: '#f87171' }]} />
+                            <View style={[s.bar, { height: barH, backgroundColor: semantic.lose }]} />
                             <View style={{ height: CHART_H - barH }} />
                           </>
                         )}
@@ -344,7 +345,7 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.bg },
     flex: { flex: 1 },
-    scroll: { padding: 16, paddingTop: 36, paddingBottom: 16 },
+    scroll: { padding: 16, paddingTop: 8, paddingBottom: 16 },
     footer: {
       padding: 16, paddingBottom: 24,
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -355,7 +356,7 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
       padding: 16, marginBottom: 16, justifyContent: 'space-around',
     },
     statItem: { alignItems: 'center' },
-    statValue: { fontSize: 20, fontWeight: '800', color: theme.text },
+    statValue: { fontSize: 20, fontWeight: '800', color: theme.text, ...tabularNums },
     statLabel: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
     statDivider: { width: 1, backgroundColor: theme.border },
     activeCard: {
@@ -363,13 +364,13 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
       padding: 16, marginBottom: 16,
     },
     activeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4ade80', marginRight: 8 },
+    activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: semantic.win, marginRight: 8 },
     activeTitle: { fontSize: 15, fontWeight: '700', color: '#fff', flex: 1 },
     activeDuration: { fontSize: 13, color: '#aaa' },
     activeBuyIn: { fontSize: 13, color: '#aaa', marginBottom: 12 },
     endBtn: {
       backgroundColor: '#fff', borderRadius: 8,
-      padding: 10, alignItems: 'center',
+      padding: 12, alignItems: 'center',
     },
     endBtnText: { fontSize: 14, fontWeight: '700', color: '#1a1a2e' },
     startBtn: {
@@ -389,7 +390,7 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
     },
     sessionTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
     sessionDate: { fontSize: 14, fontWeight: '600', color: theme.text },
-    sessionProfit: { fontSize: 16, fontWeight: '800' },
+    sessionProfit: { fontSize: 16, fontWeight: '800', ...tabularNums },
     sessionBottom: { flexDirection: 'row', justifyContent: 'space-between' },
     sessionDetail: { fontSize: 12, color: theme.textMuted },
     sessionDuration: { fontSize: 12, color: theme.textMuted },
@@ -401,7 +402,7 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
       padding: 12, alignItems: 'center',
     },
     bestWorstLabel: { fontSize: 11, marginBottom: 4 },
-    bestWorstValue: { fontSize: 20, fontWeight: '800' },
+    bestWorstValue: { fontSize: 20, fontWeight: '800', ...tabularNums },
     chartCard: {
       borderRadius: 12, borderWidth: 1,
       padding: 14, marginBottom: 16,

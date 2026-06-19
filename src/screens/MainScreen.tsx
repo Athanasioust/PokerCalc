@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { tabularNums } from '../designTokens';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import CardSlot from '../components/CardSlot';
@@ -301,7 +303,7 @@ export default function MainScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
         {/* Header */}
@@ -318,7 +320,7 @@ export default function MainScreen() {
             >
               <Ionicons name="help-circle-outline" size={20} color={theme.textMuted} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={clearAll} style={[styles.clearBtn, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
+            <TouchableOpacity onPress={clearAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[styles.clearBtn, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
               <Text style={[styles.clearText, { color: theme.textMuted }]}>Clear</Text>
             </TouchableOpacity>
           </View>
@@ -522,7 +524,7 @@ function Section({ label, children, theme }: { label: string; children: React.Re
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 16, paddingTop: 36, paddingBottom: 40 },
+  scroll: { padding: 16, paddingTop: 8, paddingBottom: 40 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 20,
@@ -533,7 +535,7 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   helpBtn: { padding: 6, borderRadius: 8, borderWidth: 1 },
   clearBtn: {
-    paddingHorizontal: 14, paddingVertical: 6,
+    paddingHorizontal: 14, paddingVertical: 10,
     borderRadius: 8, borderWidth: 1,
   },
   clearText: { fontSize: 14 },
@@ -582,6 +584,6 @@ const styles = StyleSheet.create({
   },
   comboLabel: { fontSize: 14, fontWeight: '600', color: '#92400e' },
   comboStats: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  comboOuts: { fontSize: 14, fontWeight: '600', color: '#92400e' },
-  comboPct: { fontSize: 18, fontWeight: '800', color: '#92400e' },
+  comboOuts: { fontSize: 14, fontWeight: '600', color: '#92400e', ...tabularNums },
+  comboPct: { fontSize: 18, fontWeight: '800', color: '#92400e', ...tabularNums },
 });

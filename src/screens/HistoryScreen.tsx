@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Share,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { tabularNums } from '../designTokens';
 import { HandRecord, StreetSnapshot, loadHistory, clearHistory, getStreets } from '../logic/history';
 import { RANK_LABELS, SUIT_SYMBOLS, Suit } from '../logic/deck';
 import { HAND_LABELS } from '../logic/handEvaluator';
@@ -72,7 +74,7 @@ export default function HistoryScreen() {
 
   function MiniCard({ rank, suit, dim }: { rank: import('../logic/deck').Rank; suit: Suit; dim?: boolean }) {
     return (
-      <View style={[styles.miniCard, { borderColor: theme.borderStrong, opacity: dim ? 0.65 : 1 }]}>
+      <View style={[styles.miniCard, { backgroundColor: theme.bgCard, borderColor: theme.borderStrong, opacity: dim ? 0.65 : 1 }]}>
         <Text style={[styles.miniRank, { color: suitColor(suit) }]}>{RANK_LABELS[rank]}</Text>
         <Text style={[styles.miniSuit, { color: suitColor(suit) }]}>{SUIT_SYMBOLS[suit]}</Text>
       </View>
@@ -114,12 +116,12 @@ export default function HistoryScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
           <Text style={[styles.pageTitle, { color: theme.text }]}>History</Text>
           {history.length > 0 && (
-            <TouchableOpacity onPress={handleClear} style={[styles.clearBtn, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
+            <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={[styles.clearBtn, { borderColor: theme.border, backgroundColor: theme.bgCard }]}>
               <Text style={[styles.clearText, { color: theme.textMuted }]}>Clear</Text>
             </TouchableOpacity>
           )}
@@ -216,13 +218,13 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 16, paddingTop: 36, paddingBottom: 40 },
+  scroll: { padding: 16, paddingTop: 8, paddingBottom: 40 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 20,
   },
   pageTitle: { fontSize: 28, fontWeight: '800' },
-  clearBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+  clearBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, borderWidth: 1 },
   clearText: { fontSize: 14 },
   empty: { alignItems: 'center', marginTop: 80 },
   emptyIcon: { fontSize: 56, marginBottom: 16 },
@@ -235,8 +237,8 @@ const styles = StyleSheet.create({
   handRank: { fontSize: 13, fontWeight: '700' },
   cardRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
   miniCard: {
-    width: 34, height: 48, borderRadius: 6, borderWidth: 1,
-    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+    width: 34, height: 48, borderRadius: 8, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
   },
   miniRank: { fontSize: 12, fontWeight: '700', lineHeight: 15 },
   miniSuit: { fontSize: 10, lineHeight: 13 },
@@ -249,7 +251,7 @@ const styles = StyleSheet.create({
   streetHand: { fontSize: 12, fontWeight: '600' },
   streetStats: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   streetDraw: { fontSize: 12 },
-  streetOdds: { fontSize: 12, fontWeight: '700' },
+  streetOdds: { fontSize: 12, fontWeight: '700', ...tabularNums },
   shareBtn: { marginTop: 10, paddingVertical: 6, borderTopWidth: StyleSheet.hairlineWidth, alignItems: 'center' },
   shareText: { fontSize: 13 },
 });

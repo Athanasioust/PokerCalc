@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext';
+import { tabularNums } from '../designTokens';
 import RangeSelector from '../components/RangeSelector';
 import { GTO_RANGES } from '../logic/ranges';
 
@@ -168,7 +170,7 @@ export default function ReferenceScreen() {
   const [gtoPosition, setGtoPosition] = useState<Position>('BTN');
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={[styles.pageTitle, { color: theme.text }]}>Quick Reference</Text>
 
@@ -199,7 +201,7 @@ export default function ReferenceScreen() {
               onPress={() => setGtoPosition(pos)}
               style={[styles.posTab, gtoPosition === pos && [styles.posTabActive, { backgroundColor: theme.primary }]]}
             >
-              <Text style={[styles.posTabText, { color: gtoPosition === pos ? '#fff' : theme.textMuted }]}>{pos}</Text>
+              <Text style={[styles.posTabText, { color: gtoPosition === pos ? theme.onPrimary : theme.textMuted }]}>{pos}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -229,7 +231,7 @@ export default function ReferenceScreen() {
         {/* ── Common Draws & Outs ── */}
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>Common Draws & Outs</Text>
         <View style={[styles.table, { borderColor: theme.border }]}>
-          <View style={[styles.tableRow, { backgroundColor: theme.primary }]}>
+          <View style={[styles.tableRow, { backgroundColor: theme.resultsBg }]}>
             <Text style={[styles.col1, styles.headerText]}>Draw</Text>
             <Text style={[styles.colNum, styles.headerText]}>Outs</Text>
             <Text style={[styles.colNum, styles.headerText]}>Flop</Text>
@@ -259,7 +261,7 @@ export default function ReferenceScreen() {
           {' '}or by <Text style={[styles.bold, { color: theme.text }]}>2</Text> on the turn for a quick estimate.
         </Text>
         <View style={[styles.table, { borderColor: theme.border }]}>
-          <View style={[styles.tableRow, { backgroundColor: theme.primary }]}>
+          <View style={[styles.tableRow, { backgroundColor: theme.resultsBg }]}>
             <Text style={[styles.ruleCol, styles.headerText]}>Outs</Text>
             <Text style={[styles.ruleCol, styles.headerText]}>× 4 (Flop)</Text>
             <Text style={[styles.ruleCol, styles.headerText]}>× 2 (Turn)</Text>
@@ -284,7 +286,7 @@ export default function ReferenceScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 16, paddingTop: 36, paddingBottom: 40 },
+  scroll: { padding: 16, paddingTop: 8, paddingBottom: 40 },
   pageTitle: { fontSize: 28, fontWeight: '800', marginBottom: 24 },
   sectionTitle: {
     fontSize: 13, fontWeight: '600',
@@ -340,8 +342,8 @@ const styles = StyleSheet.create({
   colNum: { flex: 1, textAlign: 'center' },
   drawName: { fontSize: 13, fontWeight: '600' },
   drawExample: { fontSize: 11, marginTop: 1 },
-  outsNum: { fontSize: 15, fontWeight: '800', textAlign: 'center' },
-  pctText: { fontSize: 13, textAlign: 'center' },
+  outsNum: { fontSize: 15, fontWeight: '800', textAlign: 'center', ...tabularNums },
+  pctText: { fontSize: 13, textAlign: 'center', ...tabularNums },
   ruleDesc: { fontSize: 14, marginBottom: 10, lineHeight: 20 },
   bold: { fontWeight: '700' },
   ruleCol: { flex: 1, textAlign: 'center' },

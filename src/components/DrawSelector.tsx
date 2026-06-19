@@ -32,14 +32,14 @@ export default function DrawSelector({ available, selected, onSelect }: Props) {
             style={[
               styles.chip,
               { borderColor: theme.border, backgroundColor: theme.bgCard },
-              selected === draw && styles.chipSelected,
+              selected === draw && { borderColor: theme.primary, backgroundColor: theme.primary },
             ]}
             onPress={() => onSelect(draw)}
           >
             <Text style={[
               styles.chipText,
               { color: theme.textSecondary },
-              selected === draw && styles.chipTextSelected,
+              selected === draw && { color: theme.onPrimary },
             ]}>
               {DRAW_LABELS[draw]}
             </Text>
@@ -64,21 +64,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 20,
     borderWidth: 1.5,
-  },
-  chipSelected: {
-    borderColor: '#2d6a4f',
-    backgroundColor: '#2d6a4f',
   },
   chipText: {
     fontSize: 14,
     fontWeight: '500',
-  },
-  chipTextSelected: {
-    color: '#fff',
   },
   empty: { paddingVertical: 12 },
   emptyText: { fontSize: 14, fontStyle: 'italic' },
