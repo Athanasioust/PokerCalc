@@ -294,9 +294,11 @@ export function calculateMultiEquity(
   function resolveBoard(fullBoard: Card[]): 'hero' | 'villain' | 'tie' {
     const values = allHands.map(h => scoreHand(h, fullBoard, variant));
     const best = Math.max(...values);
+    // Hero (values[0]) only ties if hero is actually one of the winners.
+    // If villains tie for best but hero isn't among them, hero lost.
+    if (values[0] !== best) return 'villain';
     const winners = values.filter(v => v === best).length;
-    if (winners > 1) return 'tie';
-    return values[0] === best ? 'hero' : 'villain';
+    return winners > 1 ? 'tie' : 'hero';
   }
 
   if (boardsNeeded === 0) {

@@ -47,7 +47,8 @@ function calcFlushDraw(holeCards: Card[], board: Card[], remaining: Card[]): Out
   for (const [suit, count] of sc) {
     if (count > bestCount) { bestCount = count; bestSuit = suit; }
   }
-  if (!bestSuit || bestCount < 4) return { outs: 0, outCards: [], available: bestCount >= 4 };
+  // A flush draw is exactly 4 to a suit. 5+ is already a made flush, not a draw.
+  if (!bestSuit || bestCount !== 4) return { outs: 0, outCards: [], available: false };
   const outCards = remaining.filter(c => c.suit === bestSuit);
   return { outs: outCards.length, outCards, available: true };
 }

@@ -106,7 +106,10 @@ export default function MainScreen() {
   ];
   const fullBoard = [...knownBoard, ...(river ? [river] : [])];
 
-  const hasMinCards = knownHoleCards.length >= 2 && knownBoard.length >= 3;
+  // Draws only make sense while a card is still to come. Once the river is in,
+  // the hand is complete — hide the draw/outs section (and never count the
+  // already-dealt river card as a live out).
+  const hasMinCards = knownHoleCards.length >= 2 && knownBoard.length >= 3 && !river;
 
   const currentHand = useMemo(
     () => variant === 'omaha'

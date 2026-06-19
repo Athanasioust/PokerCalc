@@ -112,12 +112,6 @@ export function evaluateBestHand(holeCards: Card[], board: Card[]): HandRank | n
   return best;
 }
 
-// For equity: evaluates and returns numeric rank value for comparison
-export function handRankValue(holeCards: Card[], board: Card[]): number {
-  const rank = evaluateBestHand(holeCards, board);
-  return rank ? HAND_RANK_VALUE[rank] : -1;
-}
-
 // Returns the high card of a straight (0 if no straight).
 // A-2-3-4-5 returns 5 (five-high). A-K-Q-J-T returns 14.
 function straight5High(ranks: number[]): number {
@@ -192,8 +186,9 @@ function evaluate5Score(cards: Card[]): number {
 // Full hand score — best 5 cards from hole + board, comparable across all hand types and ranks.
 export function evaluateHandScore(holeCards: Card[], board: Card[]): number {
   const all = [...holeCards, ...board];
-  if (all.length < 2) return -1;
-  if (all.length <= 5) return evaluate5Score(all);
+  // evaluate5Score requires a full 5-card hand; fewer cards have no score yet.
+  if (all.length < 5) return -1;
+  if (all.length === 5) return evaluate5Score(all);
   const combos = combinations(all, 5);
   let best = -1;
   for (const combo of combos) {

@@ -110,7 +110,9 @@ export default function EquityCalculator({ heroHole, board, allKnownCards, varia
   });
 
   useEffect(() => {
-    if (!canCalc) { setResult(null); return; }
+    // Invalidate any in-flight calc (bump the key) so a pending setTimeout
+    // can't land a stale result for a hand state that no longer exists.
+    if (!canCalc) { calcKey.current++; setResult(null); setLoading(false); return; }
     const key = ++calcKey.current;
     setLoading(true);
     setTimeout(() => {

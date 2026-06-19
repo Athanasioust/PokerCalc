@@ -54,6 +54,13 @@ section('Hand evaluator (ranking order)');
   eq('detect two pair', evaluateBestHand(cards('As Kd'), cards('Ac Kh 2d 7c 9s')), 'two_pair');
   eq('detect one pair', evaluateBestHand(cards('As Kd'), cards('Ac 5h 2d 7c 9s')), 'one_pair');
   eq('detect high card', evaluateBestHand(cards('As Kd'), cards('Qc 5h 2d 7s 9c')), 'high_card');
+
+  // M4: scoring fewer than 5 cards must return -1, never NaN.
+  eq('evaluateHandScore with 2 cards = -1 (no NaN)', evaluateHandScore(cards('Ah Kd'), []), -1);
+  eq('evaluateHandScore with 4 cards = -1', evaluateHandScore(cards('Ah Kd'), cards('Qc 5h')), -1);
+  check('evaluateHandScore with 7 cards is a finite number',
+    Number.isFinite(evaluateHandScore(cards('Ah Kd'), cards('Qc 5h 2d 7s 9c'))),
+    `got ${evaluateHandScore(cards('Ah Kd'), cards('Qc 5h 2d 7s 9c'))}`);
 }
 
 // ---- 2. Outs calculator ----------------------------------------------------
@@ -67,6 +74,14 @@ section('Outs calculator (known out counts)');
   eq('FH from two pair = 4 outs', calculateOuts('full_house_two_pair', cards('Ac Kd'), cards('Ah Kh 2c')).outs, 4);
   eq('FH from trips = 6 outs', calculateOuts('full_house_trips', cards('8c 8d'), cards('8h Kc 2s')).outs, 6);
   eq('quads from trips = 1 out', calculateOuts('quads', cards('8c 8d'), cards('8h Kc 2s')).outs, 1);
+
+  // M3: a completed flush (5 to a suit) is NOT a flush draw.
+  eq('made flush is not a flush draw (unavailable)',
+    calculateOuts('flush_draw', cards('Ah Kh'), cards('Qh Jh 2h')).available, false);
+  eq('made flush flush-draw outs = 0',
+    calculateOuts('flush_draw', cards('Ah Kh'), cards('Qh Jh 2h')).outs, 0);
+  eq('exactly 4 to a suit IS a flush draw (9 outs)',
+    calculateOuts('flush_draw', cards('Ah Kh'), cards('Qh 7h 2c')).outs, 9);
 
   const avail = availableDraws(cards('Jh Th'), cards('9h 8h 2c'));
   check('flush+OESD both available (JhTh/9h8h2c)', avail.includes('flush_draw') && avail.includes('oesd'),
@@ -167,6 +182,18 @@ section('Multi-way equity (3-way preflop)');
   const r = calculateMultiEquity(cards('Ah Ad'), [cards('Kh Kd'), cards('Qh Qd')], []);
   near('AA vs KK vs QQ — hero ≈ 64%', r.heroWin, 64, 5);
   near('3-way sum ≈ 100', r.heroWin + r.loss + r.tie, 100, 0.6);
+}
+
+// ---- 6b. Multi-way: villain-villain tie that excludes hero is a LOSS -------
+section('Multi-way equity — villain tie excluding hero (M1 regression)');
+{
+  // Decided board. Both villains hold AA and beat hero's deuces; they tie each
+  // other for best. Hero is NOT a winner → this must be a hero loss, not a tie.
+  const r = calculateMultiEquity(
+    cards('2c 2d'), [cards('Ac Ad'), cards('Ah As')], cards('Kd Qs 7c 5h 3c'));
+  eq('hero loses (loss = 100)', r.loss, 100);
+  eq('hero tie = 0 (not a hero chop)', r.tie, 0);
+  eq('hero win = 0', r.heroWin, 0);
 }
 
 // ---- 7. Range equity -------------------------------------------------------
