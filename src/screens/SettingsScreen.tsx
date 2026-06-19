@@ -10,7 +10,7 @@ import { ThemeMode } from '../theme';
 import { clearHistory } from '../logic/history';
 import { useSettings, OddsFormat } from '../SettingsContext';
 
-const APP_VERSION = '1.3.3';
+const APP_VERSION = '1.4.0';
 
 const PREF_HAPTICS = 'pref_haptics';
 const PREF_VARIANT = 'pref_default_variant';
