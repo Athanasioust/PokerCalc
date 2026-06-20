@@ -19,7 +19,8 @@
       "package": "com.pokercalc.app",
       "versionCode": 13,
       "icon": "./assets/app_icon.png",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
