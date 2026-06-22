@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import PagerView from 'react-native-pager-view';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { SettingsProvider } from './src/SettingsContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import RateAppGate from './src/components/RateAppGate';
 import MainScreen from './src/screens/MainScreen';
 import ReferenceScreen from './src/screens/ReferenceScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
@@ -13,6 +15,9 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import SessionScreen from './src/screens/SessionScreen';
 
 type Tab = 'calc' | 'history' | 'sessions' | 'ref' | 'settings';
+
+// Page order must match the TABS order below.
+const TAB_ORDER: Tab[] = ['calc', 'history', 'sessions', 'ref', 'settings'];
 
 const TABS: { id: Tab; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap; label: string }[] = [
   { id: 'calc',     icon: 'calculator-outline',  iconActive: 'calculator',   label: 'Calc'     },
@@ -63,22 +68,37 @@ function TabBar({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) =>
 function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>('calc');
   const theme = useTheme();
+  const pagerRef = useRef<PagerView>(null);
+
+  // Tab tap → animate the pager to that page (works even while swipe is
+  // disabled on the Calc page, since setPage is programmatic).
+  function goToTab(tab: Tab) {
+    setActiveTab(tab);
+    pagerRef.current?.setPage(TAB_ORDER.indexOf(tab));
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <ErrorBoundary>
-        <View style={styles.content}>
-          <View style={[styles.content, { display: activeTab === 'calc' ? 'flex' : 'none' }]}>
-            <MainScreen />
-          </View>
-          {activeTab === 'history'  && <HistoryScreen />}
-          {activeTab === 'sessions' && <SessionScreen />}
-          {activeTab === 'ref'      && <ReferenceScreen />}
-          {activeTab === 'settings' && <SettingsScreen />}
-        </View>
+        <PagerView
+          ref={pagerRef}
+          style={styles.content}
+          initialPage={0}
+          // Swipe is disabled while on Calc (it has horizontal content);
+          // every other screen swipes freely, including back to Calc.
+          scrollEnabled={activeTab !== 'calc'}
+          onPageSelected={e => setActiveTab(TAB_ORDER[e.nativeEvent.position])}
+        >
+          <View key="calc" style={styles.content}><MainScreen /></View>
+          <View key="history" style={styles.content}><HistoryScreen /></View>
+          <View key="sessions" style={styles.content}><SessionScreen /></View>
+          <View key="ref" style={styles.content}><ReferenceScreen /></View>
+          <View key="settings" style={styles.content}><SettingsScreen /></View>
+        </PagerView>
       </ErrorBoundary>
-      <TabBar activeTab={activeTab} onSelect={setActiveTab} />
+      <TabBar activeTab={activeTab} onSelect={goToTab} />
+      <RateAppGate />
     </View>
   );
 }

@@ -76,6 +76,11 @@ const SECTIONS = [
     title: 'Settings',
     body: '• Theme — System, Light, or Dark\n• Default Variant — Hold\'em or Omaha at startup\n• Advanced Mode — shows Range input and Hand Distribution in the equity calculator\n• Odds Format — display as percentage (72%) or ratio (2.6:1)\n• Haptic Feedback — vibration on card taps',
   },
+  {
+    icon: 'star-outline' as const,
+    title: 'Support the App',
+    body: 'PokerCalc is built by a solo developer and is completely free, with no ads.\n\nIf it\'s helped you at the table, the best way to support it is a quick rating — it takes a few seconds and makes a real difference for discovery. After you\'ve used the app a while, a one-time prompt will offer to open the rating card without leaving the app.',
+  },
 ];
 
 export default function TutorialModal({ visible, onClose }: Props) {

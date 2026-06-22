@@ -20,7 +20,8 @@
       "versionCode": 13,
       "icon": "./assets/app_icon.png",
       "predictiveBackGestureEnabled": false,
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.pokercalc.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
